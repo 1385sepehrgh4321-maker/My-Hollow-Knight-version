@@ -72,6 +72,12 @@ public class MainMenu extends BaseMenu{
         });
         mainMenuTable.add(settingBtn).row();
         TextButton guideBtn = new TextButton(bundle.get("btn_guide"), skin);
+        guideBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                engine.setScreen(new GuideMenu(engine));
+            }
+        });
         mainMenuTable.add(guideBtn).row();
         TextButton achievementBtn = new TextButton(bundle.get("btn_achievements"), skin);
         mainMenuTable.add(achievementBtn).row();

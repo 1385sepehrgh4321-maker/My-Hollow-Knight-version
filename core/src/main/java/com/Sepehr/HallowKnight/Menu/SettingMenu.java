@@ -74,6 +74,22 @@ public class SettingMenu extends BaseMenu{
             }
         });
 
+        TextButton resetSfx = new TextButton(bundle.get("btn_reset_audio") , skin);
+        resetSfx.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                prefs.putFloat("volume" , 0.7f);
+                prefs.putBoolean("muted" , false);
+                prefs.flush();
+
+                volumeSlider.setValue(0.7f);
+                muteCheckBox.setChecked(false);
+
+                if(engine.getMenuMusic() != null)
+                    engine.getMenuMusic().setVolume(0.7f);
+            }
+        });
+
         Label brightnessLabel = new Label(bundle.get("lbl_brightness"), skin);
         final Slider brightnessSlider = new Slider(0.2f, 1f, 0.05f, false, skin);
         brightnessSlider.setValue(currentBrightness);
@@ -110,19 +126,20 @@ public class SettingMenu extends BaseMenu{
 
 
 
-        table.add(volumeLabel).row();
-        table.add(volumeSlider).width(300).row();
-        table.add(muteCheckBox).row();
+        table.add(volumeLabel).colspan(2).row();
+        table.add(volumeSlider).colspan(2).width(300).row();
+        table.add(muteCheckBox).left().padRight(10);
+        table.add(resetSfx).width(100).right().row();
 
-        table.add(brightnessLabel).row();
-        table.add(brightnessSlider).width(300).row();
+        table.add(brightnessLabel).colspan(2).row();
+        table.add(brightnessSlider).colspan(2).width(300).row();
 
-        table.add(languageLabel).row();
-        table.add(languageSelect).width(200).row();
+        table.add(languageLabel).colspan(2).row();
+        table.add(languageSelect).colspan(2).width(200).row();
 
-        table.add(editControllers).width(250).padTop(10).row();
+        table.add(editControllers).colspan(2).width(250).padTop(10).row();
 
-        table.add(backBtn).padTop(25).row();
+        table.add(backBtn).colspan(2).padTop(25).row();
 
         stage.addActor(table);
     }

@@ -26,6 +26,7 @@ public class ControllersMenu extends BaseMenu{
         super.show();
 
         prefs = Gdx.app.getPreferences("HollowKnightControls");
+        Preferences savePrefs = Gdx.app.getPreferences("HollowKnightSaveData");
 
         int jumpKey = prefs.getInteger("key_jump", 62);
         int attackKey = prefs.getInteger("key_attack", 54);
@@ -85,6 +86,22 @@ public class ControllersMenu extends BaseMenu{
         });
         table.add(attackLabel).left();
         table.add(attackBtn).width(150).row();
+
+        //dash
+        if(savePrefs.getBoolean("unlocked_dash" , false)) {
+            int dashKey = prefs.getInteger("key_dash", Input.Keys.SHIFT_LEFT);
+
+            Label dashLabel = new Label(bundle.get("lbl_dash"), skin);
+            final TextButton dashBtn = new TextButton(Input.Keys.toString(dashKey) , skin);
+            dashBtn.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    startListening("key_dash" , dashBtn);
+                }
+            });
+            table.add(dashLabel).left();
+            table.add(dashBtn).width(150).row();
+        }
 
         Label resetLabel = new Label(bundle.get("lbl_reset_controllers"), skin);
         TextButton resetBtn = new TextButton(bundle.get("btn_reset"), skin);
