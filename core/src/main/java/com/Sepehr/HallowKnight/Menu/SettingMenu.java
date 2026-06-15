@@ -6,12 +6,15 @@ import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.I18NBundle;
 
 public class SettingMenu extends BaseMenu{
     private Preferences prefs;
+    I18NBundle bundle;
 
     public SettingMenu(HollowKnightEngine engine) {
         super(engine);
+        bundle = engine.getBundle();
     }
 
     @Override
@@ -27,7 +30,7 @@ public class SettingMenu extends BaseMenu{
         table.setFillParent(true);
         table.defaults().pad(12).center();
 
-        TextButton editControllers = new TextButton("Edit Controllers" , skin);
+        TextButton editControllers = new TextButton(bundle.get("btn_edit_controllers") , skin);
         editControllers.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -35,7 +38,7 @@ public class SettingMenu extends BaseMenu{
             }
         });
 
-        final CheckBox muteCheckBox = new CheckBox(" Mute Audio", skin);
+        final CheckBox muteCheckBox = new CheckBox(bundle.get("chk_mute"), skin);
         muteCheckBox.setChecked(isMuted);
         muteCheckBox.addListener(new ChangeListener() {
             @Override
@@ -56,7 +59,7 @@ public class SettingMenu extends BaseMenu{
             }
         });
 
-        Label volumeLabel = new Label("Music Volume", skin);
+        Label volumeLabel = new Label(bundle.get("lbl_music_volume"), skin);
         final Slider volumeSlider = new Slider(0f, 1f, 0.05f, false, skin);
         volumeSlider.setValue(currentVolume);
         volumeSlider.addListener(new ChangeListener() {
@@ -71,7 +74,7 @@ public class SettingMenu extends BaseMenu{
             }
         });
 
-        Label brightnessLabel = new Label("Brightness", skin);
+        Label brightnessLabel = new Label(bundle.get("lbl_brightness"), skin);
         final Slider brightnessSlider = new Slider(0.2f, 1f, 0.05f, false, skin);
         brightnessSlider.setValue(currentBrightness);
         brightnessSlider.addListener(new ChangeListener() {
@@ -82,9 +85,9 @@ public class SettingMenu extends BaseMenu{
             }
         });
 
-        Label languageLabel = new Label("Language", skin);
+        Label languageLabel = new Label(bundle.get("lbl_language"), skin);
         final SelectBox<String> languageSelect = new SelectBox<>(skin);
-        languageSelect.setItems("English", "Español", "Deutsch", "Français", "Persian");
+        languageSelect.setItems("English", "Español");
         languageSelect.setSelected(currentLanguage);
         languageSelect.addListener(new ChangeListener() {
             @Override
@@ -92,11 +95,12 @@ public class SettingMenu extends BaseMenu{
                 String selectedLang = languageSelect.getSelected();
                 prefs.putString("language", selectedLang);
                 prefs.flush();
-                System.out.println("Language swapped to: " + selectedLang);
+                engine.loadLocalization();
+                engine.setScreen(new SettingMenu(engine));
             }
         });
 
-        TextButton backBtn = new TextButton("Back", skin);
+        TextButton backBtn = new TextButton(bundle.get("btn_back"), skin);
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {

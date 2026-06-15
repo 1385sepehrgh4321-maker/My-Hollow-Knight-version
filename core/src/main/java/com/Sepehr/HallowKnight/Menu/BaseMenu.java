@@ -5,19 +5,29 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 
 public abstract class BaseMenu implements Screen {
     protected Stage stage;
     protected Skin skin;
     protected HollowKnightEngine engine;
 
+    private Texture backgroundTexture;
+    private Image backgroundImage;
+
     public BaseMenu(HollowKnightEngine engine) {
         this.engine = engine;
-        this.stage = new Stage(new ScreenViewport());
+        this.stage = new Stage(new FitViewport(1280 , 720));
         this.skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
+
+        backgroundTexture = new Texture(Gdx.files.internal("sprites/Hollow Knight/Menu/controller_prompt_bg 2026.png"));
+        backgroundImage = new Image(backgroundTexture);
+        backgroundImage.setFillParent(true);
+        stage.addActor(backgroundImage);
     }
 
     @Override
@@ -31,6 +41,8 @@ public abstract class BaseMenu implements Screen {
         float b = prefs.getFloat("brightness", 1.0f);
         Gdx.gl.glClearColor(0.05f * b, 0.05f * b, 0.1f * b, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        backgroundImage.setColor(b, b, b, 1f);
 
         stage.act(delta);
         stage.draw();
@@ -58,6 +70,8 @@ public abstract class BaseMenu implements Screen {
 
     @Override
     public void dispose() {
-
+        if (stage != null) stage.dispose();
+        if (skin != null) skin.dispose();
+        if (backgroundTexture != null) backgroundTexture.dispose();
     }
 }

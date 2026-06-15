@@ -4,20 +4,28 @@ import com.Sepehr.HallowKnight.HollowKnightEngine;
 import com.Sepehr.HallowKnight.Menu.Listener.ExitListener;
 import com.Sepehr.HallowKnight.Menu.Listener.LoadGameListener;
 import com.Sepehr.HallowKnight.Menu.Listener.NewGameListener;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.I18NBundle;
 
 public class MainMenu extends BaseMenu{
     private Table mainMenuTable;
     private Table startGameMenuTable;
+    I18NBundle bundle;
 
     public MainMenu(HollowKnightEngine engine) {
         super(engine);
+        bundle = engine.getBundle();
     }
+
+    private Texture logoTexture;
 
     @Override
     public void show() {
@@ -33,10 +41,15 @@ public class MainMenu extends BaseMenu{
     private void createMainMenuTable() {
         mainMenuTable = new Table();
         mainMenuTable.setFillParent(true);
-        mainMenuTable.defaults().pad(10).center().spaceBottom(10).width(300).height(50);
+        mainMenuTable.defaults().pad(10).center().spaceBottom(10).width(300).height(30);
         mainMenuTable.bottom();
-        mainMenuTable.padBottom(100);
-        TextButton startGameBtn = new TextButton("Start Game" , skin);
+        mainMenuTable.padBottom(10);
+
+        logoTexture = new Texture(Gdx.files.internal("sprites/Hollow Knight/Menu/vheart_title_spanish.png"));
+        Image logoImage = new Image(logoTexture);
+        mainMenuTable.add(logoImage).width(600).height(150).padBottom(50).row();
+
+        TextButton startGameBtn = new TextButton(bundle.get("btn_start_game"), skin);
         startGameBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -50,7 +63,7 @@ public class MainMenu extends BaseMenu{
             }
         });
         mainMenuTable.add(startGameBtn).row();
-        TextButton settingBtn = new TextButton("Setting" , skin);
+        TextButton settingBtn = new TextButton(bundle.get("btn_setting"), skin);
         settingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -58,11 +71,11 @@ public class MainMenu extends BaseMenu{
             }
         });
         mainMenuTable.add(settingBtn).row();
-        TextButton guideBtn = new TextButton("Guide" , skin);
+        TextButton guideBtn = new TextButton(bundle.get("btn_guide"), skin);
         mainMenuTable.add(guideBtn).row();
-        TextButton achievementBtn = new TextButton("Achievements" , skin);
+        TextButton achievementBtn = new TextButton(bundle.get("btn_achievements"), skin);
         mainMenuTable.add(achievementBtn).row();
-        TextButton exitBtn = new TextButton("EXIT" , skin);
+        TextButton exitBtn = new TextButton(bundle.get("btn_exit"), skin);
         exitBtn.addListener(new ExitListener());
         mainMenuTable.add(exitBtn).row();
     }
@@ -76,16 +89,16 @@ public class MainMenu extends BaseMenu{
         startGameMenuTable.getColor().a = 0f;
         startGameMenuTable.setTouchable(Touchable.disabled);
 
-        TextButton newGameBtn = new TextButton("New Game", skin);
+        TextButton newGameBtn = new TextButton(bundle.get("btn_new_game"), skin);
         newGameBtn.addListener(new NewGameListener(engine));
         startGameMenuTable.add(newGameBtn).row();
         for (int i = 1; i < 5; i++) {
-            TextButton loadSlot = new TextButton("Load Save " + i, skin);
+            TextButton loadSlot = new TextButton(bundle.get("lbl_load_save")+ i, skin);
             loadSlot.addListener(new LoadGameListener(engine));
             startGameMenuTable.add(loadSlot).row();
         }
 
-        TextButton backBtn = new TextButton("Back", skin);
+        TextButton backBtn = new TextButton(bundle.get("btn_back"), skin);
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {

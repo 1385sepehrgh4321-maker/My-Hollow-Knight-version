@@ -6,10 +6,15 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.utils.I18NBundle;
+
+import java.util.Locale;
 
 public class HollowKnightEngine extends Game {
     private Music menuMusic;
     private SpriteBatch batch;
+    private I18NBundle bundle;
+
     @Override
     public void create() {
         menuMusic = Gdx.audio.newMusic(Gdx.files.internal("sprites/Hollow Knight/Audio/stille.mp3"));
@@ -24,7 +29,21 @@ public class HollowKnightEngine extends Game {
 
         batch = new SpriteBatch();
         this.setScreen(new MainMenu(this));
+    }
 
+    public void loadLocalization() {
+        Preferences settingsPrefs = Gdx.app.getPreferences("HollowKnightSettings");
+        String currentLanguage = settingsPrefs.getString("language", "English");
+        String localeCode = currentLanguage.equals("Español") ? "es" : "en";
+        Locale locale = Locale.forLanguageTag(localeCode);
+        this.bundle = I18NBundle.createBundle(Gdx.files.internal("i18n/MyBundle"), locale);
+    }
+
+    public I18NBundle getBundle() {
+        if (this.bundle == null) {
+            loadLocalization();
+        }
+        return this.bundle;
     }
 
     public Music getMenuMusic() {

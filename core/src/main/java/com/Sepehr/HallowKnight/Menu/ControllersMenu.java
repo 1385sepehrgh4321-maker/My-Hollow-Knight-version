@@ -7,15 +7,18 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.I18NBundle;
 
 public class ControllersMenu extends BaseMenu{
     private Preferences prefs;
     private boolean isListeningForInput = false;
     private String actionToRemap = "";
     private TextButton activeRemapButton = null;
+    I18NBundle bundle;
 
     public ControllersMenu(HollowKnightEngine engine) {
         super(engine);
+        bundle = engine.getBundle();
     }
 
     @Override
@@ -32,11 +35,11 @@ public class ControllersMenu extends BaseMenu{
         Table table = new Table();
         table.setFillParent(true);
         table.defaults().pad(10).center();
-        Label titleLabel = new Label("REBIND CONTROLS", skin);
+        Label titleLabel = new Label(bundle.get("lbl_rebind_title"), skin);
         table.add(titleLabel).colspan(2).padBottom(30).row();
 
         //left
-        Label leftLabel = new Label("Move Left:", skin);
+        Label leftLabel = new Label(bundle.get("lbl_move_left"), skin);
         final TextButton leftBtn = new TextButton(Input.Keys.toString(leftKey), skin);
         leftBtn.addListener(new ChangeListener() {
             @Override
@@ -48,7 +51,7 @@ public class ControllersMenu extends BaseMenu{
         table.add(leftBtn).width(150).row();
 
         //right
-        Label rightLabel = new Label("Move Right:", skin);
+        Label rightLabel = new Label(bundle.get("lbl_move_right"), skin);
         final TextButton rightBtn = new TextButton(Input.Keys.toString(rightKey), skin);
         rightBtn.addListener(new ChangeListener() {
             @Override
@@ -60,7 +63,7 @@ public class ControllersMenu extends BaseMenu{
         table.add(rightBtn).width(150).row();
 
         //jump
-        Label jumpLabel = new Label("Jump Action:", skin);
+        Label jumpLabel = new Label(bundle.get("lbl_jump"), skin);
         final TextButton jumpBtn = new TextButton(Input.Keys.toString(jumpKey), skin);
         jumpBtn.addListener(new ChangeListener() {
             @Override
@@ -72,7 +75,7 @@ public class ControllersMenu extends BaseMenu{
         table.add(jumpBtn).width(150).row();
 
         //attack
-        Label attackLabel = new Label("Attack Action:", skin);
+        Label attackLabel = new Label(bundle.get("lbl_attack"), skin);
         final TextButton attackBtn = new TextButton(com.badlogic.gdx.Input.Keys.toString(attackKey), skin);
         attackBtn.addListener(new ChangeListener() {
             @Override
@@ -82,6 +85,26 @@ public class ControllersMenu extends BaseMenu{
         });
         table.add(attackLabel).left();
         table.add(attackBtn).width(150).row();
+
+        Label resetLabel = new Label(bundle.get("lbl_reset_controllers"), skin);
+        TextButton resetBtn = new TextButton(bundle.get("btn_reset"), skin);
+        resetBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                prefs.remove("key_left");
+                prefs.remove("key_right");
+                prefs.remove("key_jump");
+                prefs.remove("key_attack");
+                prefs.flush();
+
+                leftBtn.setText(Input.Keys.toString(Input.Keys.LEFT));
+                rightBtn.setText(Input.Keys.toString(Input.Keys.RIGHT));
+                jumpBtn.setText(Input.Keys.toString(62));
+                attackBtn.setText(Input.Keys.toString(54));
+            }
+        });
+        table.add(resetLabel).left();
+        table.add(resetBtn).width(150).row();
 
         //back
         TextButton backBtn = new TextButton("Back" , skin);
