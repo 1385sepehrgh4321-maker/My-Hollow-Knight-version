@@ -18,7 +18,7 @@ import com.badlogic.gdx.utils.I18NBundle;
 public class MainMenu extends BaseMenu{
     private Table mainMenuTable;
     private Table startGameMenuTable;
-    I18NBundle bundle;
+    private I18NBundle bundle;
 
     public MainMenu(HollowKnightEngine engine) {
         super(engine);
@@ -80,6 +80,12 @@ public class MainMenu extends BaseMenu{
         });
         mainMenuTable.add(guideBtn).row();
         TextButton achievementBtn = new TextButton(bundle.get("btn_achievements"), skin);
+        achievementBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                engine.setScreen(new AchievementMenu(engine));
+            }
+        });
         mainMenuTable.add(achievementBtn).row();
         TextButton exitBtn = new TextButton(bundle.get("btn_exit"), skin);
         exitBtn.addListener(new ExitListener());

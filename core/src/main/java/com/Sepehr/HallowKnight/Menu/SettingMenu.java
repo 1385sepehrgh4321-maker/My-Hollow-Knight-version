@@ -45,12 +45,12 @@ public class SettingMenu extends BaseMenu{
             public void changed(ChangeEvent event, Actor actor) {
                 boolean checked = muteCheckBox.isChecked();
                 prefs.putBoolean("muted", checked);
-                prefs.flush(); // Save permanently
+                prefs.flush();
 
 
                 if (engine.getMenuMusic() != null) {
                     if (checked) {
-                        engine.getMenuMusic().setVolume(0f); // Silence it
+                        engine.getMenuMusic().setVolume(0f);
                     } else {
                         float activeVolume = prefs.getFloat("volume", 0.7f);
                         engine.getMenuMusic().setVolume(activeVolume);
@@ -129,7 +129,7 @@ public class SettingMenu extends BaseMenu{
         table.add(volumeLabel).colspan(2).row();
         table.add(volumeSlider).colspan(2).width(300).row();
         table.add(muteCheckBox).left().padRight(10);
-        table.add(resetSfx).width(100).right().row();
+        table.add(resetSfx).width(70).right().row();
 
         table.add(brightnessLabel).colspan(2).row();
         table.add(brightnessSlider).colspan(2).width(300).row();

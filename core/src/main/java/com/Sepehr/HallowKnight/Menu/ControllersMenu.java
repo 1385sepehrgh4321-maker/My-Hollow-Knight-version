@@ -124,7 +124,7 @@ public class ControllersMenu extends BaseMenu{
         table.add(resetBtn).width(150).row();
 
         //back
-        TextButton backBtn = new TextButton("Back" , skin);
+        TextButton backBtn = new TextButton(bundle.get("btn_back") , skin);
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
