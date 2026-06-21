@@ -1,6 +1,7 @@
 package com.Sepehr.HallowKnight.Menu.Listener;
 
 import com.Sepehr.HallowKnight.HollowKnightEngine;
+import com.Sepehr.HallowKnight.Menu.GameplayScreen;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
@@ -12,6 +13,6 @@ public class NewGameListener extends ChangeListener {
     }
     @Override
     public void changed(ChangeEvent event, Actor actor) {
-
+        engine.setScreen(new GameplayScreen(engine));
     }
 }

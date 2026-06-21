@@ -67,4 +67,8 @@ public class HollowKnightEngine extends Game {
         if(menuMusic != null)
             menuMusic.dispose();
     }
+
+    public SpriteBatch getBatch() {
+        return batch;
+    }
 }
