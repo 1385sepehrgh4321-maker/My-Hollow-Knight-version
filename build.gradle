@@ -67,3 +67,18 @@ subprojects {
 }
 
 eclipse.project.name = 'H0llowKnight' + '-parent'
+
+project(":core") {
+  dependencies {
+    // Core Java API wrappers for mini-audio
+    implementation "games.rednblack.miniaudio:miniaudio:0.7"
+  }
+}
+
+// LibGDX games usually name their desktop launcher project ":lwjgl3" or ":desktop"
+project(":lwjgl3") {
+  dependencies {
+    // Native C runner binaries for desktop operating systems
+    implementation "games.rednblack.miniaudio:gdx-miniaudio-platform:0.7:natives-desktop"
+  }
+}

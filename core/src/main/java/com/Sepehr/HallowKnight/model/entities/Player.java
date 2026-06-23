@@ -1,41 +1,125 @@
 package com.Sepehr.HallowKnight.model.entities;
 
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
+import games.rednblack.miniaudio.MiniAudio;
 
 public class Player extends Entity{
     private Texture placeholderTexture;
     private final float MOVE_SPEED = 300f;
+    private final float DASH_SPEED = 600f;
     private final float JUMP_VELOCITY = 600f;
     private final float GRAVITY = -1500f;
     private final float INVULNERABILITY_DURATION = 1.5f;
     private final float MAX_JUMP_TIME = 0.3f;
     private final int MAX_JUMPS = 2;
+    private final float DASH_DURATION = 0.2f;
+    private final float DASH_COOLDOWN = 0.6f;
 
     private int maxHealth = 5;
     private float invulnerabilityTimer = 0f;
     private boolean isGrounded = false;
+    private boolean isWalledLeft = false;
+    private boolean isWalledRight = false;
     private Vector2 lastSafePosition;
-
+    //attack
+    private boolean isAttacking = false;
+    private float attackTimer = 0f;
+    private final float ATTACK_DURATION = 0.25f;
+    private int attackDirection = 0;
+    // dash
+    private boolean isDashing = false;
+    private float dashTimer = 0f;
+    private float dashCooldownTimer = 0f;
+    private float dashDirectionX = 0f;
+    //jump
     private boolean isJumping = false;
     private float jumpTimer = 0f;
     private int jumpCount = 0;
+    //animations
+    private TextureAtlas atlas;
+    private Animation<TextureRegion> animIdle;
+    private Animation<TextureRegion> animRun;
+    private Animation<TextureRegion> animAirborne;
+    private Animation<TextureRegion> animFall;
+    private Animation<TextureRegion> animDoubleJump;
+    private Animation<TextureRegion> animWallSlide;
+    private Animation<TextureRegion> animDash;
+    private Animation<TextureRegion> animSlashSide;
+    private Animation<TextureRegion> animSlashUp;
+    private Animation<TextureRegion> animSlashDown;
+    private Animation<TextureRegion> animHurt;
+    private Animation<TextureRegion> animDeath;
 
-    private int keyLeft;
-    private int keyRight;
-    private int keyJump;
+    //audio
+    private games.rednblack.miniaudio.MiniAudio miniAudio;
+    private games.rednblack.miniaudio.MASound soundJump;
+    private games.rednblack.miniaudio.MASound soundDoubleJump;
+    private games.rednblack.miniaudio.MASound soundWallJump;
+    private games.rednblack.miniaudio.MASound soundWallSlide;
+    private games.rednblack.miniaudio.MASound soundDash;
+    private games.rednblack.miniaudio.MASound soundFootsteps;
+    private games.rednblack.miniaudio.MASound soundDeath;
+    private games.rednblack.miniaudio.MASound soundHurt;
+    private games.rednblack.miniaudio.MASound soundAttack;
 
-    public Player(float x, float y) {
+    private boolean isWallSlideSoundPlaying = false;
+    private boolean isFootstepSoundPlaying = false;
+    private boolean hasPlayedDeathSound = false;
+
+    public enum State {
+        IDLE, RUNNING, AIRBORNE, FALLING, DOUBLE_JUMPING, WALL_SLIDING, DASHING, ATTACKING, HURT, DEATH
+    }
+    private State currentState = State.IDLE;
+    private State previousState = State.IDLE;
+    private float stateTime = 0f;
+
+    //controllers
+    private int keyLeft, keyRight, keyJump, keyDash, keyAttack, keyUp, keyDown;
+
+    public Player(float x, float y , MiniAudio miniAudio) {
         super(x, y, 24, 40);
+        this.miniAudio = miniAudio;
         loadKeyBindings();
         this.health = maxHealth;
         this.lastSafePosition = new Vector2(x, y);
+
+        this.atlas = new TextureAtlas(Gdx.files.internal("New folder/knight"));
+
+        animIdle        = new Animation<>(0.12f, atlas.findRegions("Idle"), Animation.PlayMode.LOOP);
+        animRun         = new Animation<>(0.07f, atlas.findRegions("Run"), Animation.PlayMode.LOOP);
+        animAirborne    = new Animation<>(0.10f, atlas.findRegions("Airborne"), Animation.PlayMode.LOOP);
+        animFall        = new Animation<>(0.10f, atlas.findRegions("Fall"), Animation.PlayMode.LOOP);
+        animDoubleJump  = new Animation<>(0.06f, atlas.findRegions("Double Jump"), Animation.PlayMode.NORMAL);
+        animWallSlide   = new Animation<>(0.10f, atlas.findRegions("Wall Slide"), Animation.PlayMode.LOOP);
+        animDash        = new Animation<>(0.04f, atlas.findRegions("Dash"), Animation.PlayMode.NORMAL);
+        animSlashSide   = new Animation<>(0.05f, atlas.findRegions("Slash"), Animation.PlayMode.NORMAL);
+        animSlashUp     = new Animation<>(0.05f, atlas.findRegions("UpSlash"), Animation.PlayMode.NORMAL);
+        animSlashDown   = new Animation<>(0.05f, atlas.findRegions("DownSlash"), Animation.PlayMode.NORMAL);
+        animHurt        = new Animation<>(0.10f, atlas.findRegions("Idle Hurt"), Animation.PlayMode.LOOP);
+        animDeath       = new Animation<>(0.10f, atlas.findRegions("Death"), Animation.PlayMode.NORMAL);
+
+        soundJump       = miniAudio.createSound("audio/hero_jump.wav");
+        soundDoubleJump = miniAudio.createSound("audio/hero_wings.wav");
+        soundWallJump   = miniAudio.createSound("audio/hero_wall_jump.wav");
+        soundWallSlide  = miniAudio.createSound("audio/hero_wall_slide.wav");
+        soundDash       = miniAudio.createSound("audio/hero_super_dash_burst.wav");
+        soundHurt       = miniAudio.createSound("audio/hero_damage.wav");
+        soundFootsteps = miniAudio.createSound("audio/hero_run_footsteps_grass.wav");
+        soundDeath     = miniAudio.createSound("audio/hero_death_v2.wav");
+        soundAttack = miniAudio.createSound("audio/hero_double_damage.wav");
+        soundFootsteps.setLooping(true);
+        soundWallSlide.setLooping(true);
         //will be deleted in the future
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.WHITE);
@@ -46,15 +130,48 @@ public class Player extends Entity{
 
     public void loadKeyBindings() {
         Preferences prefs = Gdx.app.getPreferences("HollowKnightSettings");
-        this.keyLeft = prefs.getInteger("key_left", Input.Keys.LEFT);
+        this.keyLeft  = prefs.getInteger("key_left", Input.Keys.LEFT);
         this.keyRight = prefs.getInteger("key_right", Input.Keys.RIGHT);
-        this.keyJump = prefs.getInteger("key_jump", Input.Keys.Z);
+        this.keyJump  = prefs.getInteger("key_jump", Input.Keys.Z);
+        this.keyDash  = prefs.getInteger("key_dash", Input.Keys.C);
+        this.keyAttack = prefs.getInteger("key_attack", Input.Keys.X);
+        this.keyUp    = prefs.getInteger("key_up", Input.Keys.UP);
+        this.keyDown  = prefs.getInteger("key_down", Input.Keys.DOWN);
     }
 
     @Override
     public void update(float delta) {
-        if (invulnerabilityTimer > 0) {
-            invulnerabilityTimer -= delta;
+        stateTime += delta;
+
+        if (invulnerabilityTimer > 0) invulnerabilityTimer -= delta;
+        if (dashCooldownTimer > 0) dashCooldownTimer -= delta;
+
+        if (health <= 0) {
+            currentState = State.DEATH;
+            velocity.set(0, 0);
+            if (animDeath.isAnimationFinished(stateTime)) {
+                //may change in the future
+                respawnAtLastSafeGround();
+            }
+            return;
+        }
+
+        if (isAttacking) {
+            attackTimer -= delta;
+            if (attackTimer <= 0) isAttacking = false;
+        }
+
+        if (isDashing) {
+            dashTimer -= delta;
+            velocity.x = dashDirectionX * DASH_SPEED;
+            velocity.y = 0;
+            if (dashTimer <= 0) {
+                isDashing = false;
+                velocity.x = 0;
+            }
+            currentState = State.DASHING;
+            syncStateTimeline();
+            return;
         }
 
         if (isGrounded && velocity.y == 0f) {
@@ -63,58 +180,152 @@ public class Player extends Entity{
 
         handleInput();
 
-        if(isJumping)
-            jumpTimer += delta;
-
-        velocity.y += GRAVITY * delta;
+        if ((isWalledLeft || isWalledRight) && velocity.y < 0) {
+            jumpCount = 0;
+            velocity.y += (GRAVITY * 0.35f) * delta;
+        } else {
+            velocity.y += GRAVITY * delta;
+        }
+        evaluateStates();
+        syncStateTimeline();
+        if (currentState == State.WALL_SLIDING && velocity.y < 0) {
+            if (!isWallSlideSoundPlaying) {
+                soundWallSlide.setVolume(1f);
+                soundWallSlide.play();
+                isWallSlideSoundPlaying = true;
+            }
+        } else {
+            if (isWallSlideSoundPlaying) {
+                soundWallSlide.stop();
+                isWallSlideSoundPlaying = false;
+            }
+        }
+        if (currentState == State.RUNNING && isGrounded) {
+            if (!isFootstepSoundPlaying) {
+                soundFootsteps.setVolume(0.4f);
+                soundFootsteps.play();
+                isFootstepSoundPlaying = true;
+            }
+        } else {
+            if (isFootstepSoundPlaying) {
+                soundFootsteps.stop();
+                isFootstepSoundPlaying = false;
+            }
+        }
+        if (currentState == State.DEATH) {
+            if (!hasPlayedDeathSound) {
+                soundDeath.setVolume(0.7f);
+                soundDeath.play();
+                hasPlayedDeathSound = true;
+            }
+        }
     }
 
     private void handleInput() {
+        // X-Axis Kinematics Logic
         velocity.x = 0;
-
         if (Gdx.input.isKeyPressed(keyLeft)) {
             velocity.x = -MOVE_SPEED;
             isFacingRight = false;
         }
-
         if (Gdx.input.isKeyPressed(keyRight)) {
             velocity.x = MOVE_SPEED;
             isFacingRight = true;
         }
 
+        // Dash Trigger Core
+        if (Gdx.input.isKeyJustPressed(keyDash) && dashCooldownTimer <= 0) {
+            isDashing = true;
+            dashTimer = DASH_DURATION;
+            dashCooldownTimer = DASH_COOLDOWN;
+            dashDirectionX = isFacingRight ? 1f : -1f;
+            soundDash.setVolume(0.6f);
+            soundDash.play();
+            return;
+        }
+
+        // Jump Mechanics Mapping
         if (Gdx.input.isKeyJustPressed(keyJump)) {
-            if (!isGrounded && jumpCount == 0) {
+            if (isGrounded) {
+                velocity.y = JUMP_VELOCITY;
                 jumpCount = 1;
-            }
-
-            if (jumpCount < MAX_JUMPS) {
-                isJumping = true;
                 isGrounded = false;
-                jumpTimer = 0f;
-                velocity.y = JUMP_VELOCITY;
+                soundJump.setVolume(0.5f);
+                soundJump.play();
+            } else if ((isWalledLeft || isWalledRight) && !isGrounded) {
+                velocity.y = JUMP_VELOCITY * 0.9f;
+//                velocity.x = isWalledLeft ? MOVE_SPEED : -MOVE_SPEED;
+//                isFacingRight = isWalledLeft;
+                jumpCount = 1;
+                soundWallJump.setVolume(0.6f);
+                soundWallJump.play();
+            } else if (jumpCount < MAX_JUMPS) {
+                velocity.y = JUMP_VELOCITY * 0.9f;
                 jumpCount++;
+                currentState = State.DOUBLE_JUMPING;
+                stateTime = 0f;
+                soundDoubleJump.setVolume(0.6f);
+                soundDoubleJump.play();
             }
         }
 
-        if (Gdx.input.isKeyPressed(keyJump) && isJumping) {
-            if (jumpTimer < MAX_JUMP_TIME) {
-                velocity.y = JUMP_VELOCITY;
+        // Attack Mechanics Mapping
+        if (Gdx.input.isKeyJustPressed(keyAttack) && !isAttacking) {
+            isAttacking = true;
+            attackTimer = ATTACK_DURATION;
+            stateTime = 0f;
+
+            if (soundAttack != null) {
+                soundAttack.stop();
+                soundAttack.setVolume(0.5f);
+                soundAttack.play();
+            }
+
+            if (Gdx.input.isKeyPressed(keyUp)) {
+                attackDirection = 1; // Upward Slash
+            } else if (Gdx.input.isKeyPressed(keyDown) && !isGrounded) {
+                attackDirection = 2; // Downward Pogo Slash
             } else {
-                isJumping = false;
+                attackDirection = 0; // Neutral Facing Slash
             }
-        }
-
-        if (!Gdx.input.isKeyPressed(keyJump)) {
-            isJumping = false;
         }
     }
 
+    private void evaluateStates() {
+        if (invulnerabilityTimer > (INVULNERABILITY_DURATION - 0.25f)) {
+            currentState = State.HURT;
+        } else if (isAttacking) {
+            currentState = State.ATTACKING;
+        } else if ((isWalledLeft || isWalledRight) && !isGrounded && velocity.y < 0) {
+            currentState = State.WALL_SLIDING;
+        } else if (velocity.y > 0) {
+            currentState = (jumpCount == 2) ? State.DOUBLE_JUMPING : State.AIRBORNE;
+        } else if (velocity.y < 0 && !isGrounded) {
+            currentState = State.FALLING;
+        } else if (velocity.x != 0) {
+            currentState = State.RUNNING;
+        } else {
+            currentState = State.IDLE;
+        }
+    }
+
+    private void syncStateTimeline() {
+        if (currentState != previousState) {
+            stateTime = 0f;
+        }
+        previousState = currentState;
+    }
+
     public void takeHazardDamage(int damage) {
-        if (invulnerabilityTimer > 0) return;
+        if (invulnerabilityTimer > 0 || health <= 0) return;
         this.health -= damage;
+        this.invulnerabilityTimer = INVULNERABILITY_DURATION;
+        stateTime = 0f;
+        soundHurt.setVolume(0.6f);
+        soundHurt.play();
 
         if (this.health <= 0) {
-            handleDeath();
+            currentState = State.DEATH;
         } else {
             respawnAtLastSafeGround();
         }
@@ -130,42 +341,104 @@ public class Player extends Entity{
     private void respawnAtLastSafeGround() {
         this.position.set(lastSafePosition.x, lastSafePosition.y);
         this.velocity.set(0, 0);
+        this.isDashing = false;
+        this.isAttacking = false;
         updateHitbox();
-
-        this.invulnerabilityTimer = INVULNERABILITY_DURATION;
     }
 
     @Override
     public void draw(SpriteBatch batch) {
-//        Color originalColor = batch.getColor();
         batch.setColor(Color.WHITE);
 
-        if (isInvulnerable()) {
-            if ((int)(invulnerabilityTimer * 15) % 2 == 0) {
-                batch.setColor(com.badlogic.gdx.graphics.Color.RED);
-            } else {
-                batch.setColor(1, 1, 1, 0.3f);
-            }
-        } else {
-            batch.setColor(0.3f, 0.6f, 0.9f, 1.0f);
+        if (invulnerabilityTimer > 0 && (int)(invulnerabilityTimer * 12) % 2 == 0) {
+            batch.setColor(Color.RED);
         }
 
-        batch.draw(placeholderTexture, position.x, position.y, hitbox.width, hitbox.height);
+        TextureRegion currentFrame;
+        switch (currentState) {
+            case DEATH:
+                currentFrame = animDeath.getKeyFrame(stateTime, false);
+                break;
+            case HURT:
+                currentFrame = animHurt.getKeyFrame(stateTime, true);
+                break;
+            case DASHING:
+                currentFrame = animDash.getKeyFrame(stateTime, false);
+                break;
+            case ATTACKING:
+                currentFrame = (attackDirection == 1) ? animSlashUp.getKeyFrame(stateTime, false) :
+                    (attackDirection == 2) ? animSlashDown.getKeyFrame(stateTime, false) :
+                        animSlashSide.getKeyFrame(stateTime, false);
+                break;
+            case WALL_SLIDING:
+                currentFrame = animWallSlide.getKeyFrame(stateTime, true);
+                break;
+            case DOUBLE_JUMPING:
+                currentFrame = animDoubleJump.getKeyFrame(stateTime, false);
+                break;
+            case AIRBORNE:
+                currentFrame = animAirborne.getKeyFrame(stateTime, true);
+                break;
+            case FALLING:
+                currentFrame = animFall.getKeyFrame(stateTime, true);
+                break;
+            case RUNNING:
+                currentFrame = animRun.getKeyFrame(stateTime, true);
+                break;
+            case IDLE:
+            default:
+                currentFrame = animIdle.getKeyFrame(stateTime, true);
+                break;
+        }
 
+        if (currentFrame == null) return;
+
+        boolean flipX = isFacingRight;
+
+        // Draw perfectly mapped to match your bounding boxes
+        float spriteScale = 0.5f;
+
+        float drawnWidth = currentFrame.getRegionWidth() * spriteScale;
+        float drawnHeight = currentFrame.getRegionHeight() * spriteScale;
+        float drawX = position.x + (hitbox.width / 2f) - (drawnWidth / 2f);
+        float drawY = position.y;
+
+        batch.draw(
+            currentFrame.getTexture(),
+            drawX, drawY,                                  // Screen Placement
+            drawnWidth / 2f, drawnHeight / 2f,             // Origin Point for rotation/scaling
+            drawnWidth, drawnHeight,                       // Width and Height dimensions on screen
+            1f, 1f,                                        // Scale dimensions factors
+            0f,                                            // Rotation degrees
+            currentFrame.getRegionX(), currentFrame.getRegionY(), // Coordinates inside texture pack sheet
+            currentFrame.getRegionWidth(), currentFrame.getRegionHeight(), // Dimensions inside texture pack sheet
+            flipX, false                                   // Flipping fields (Horizontally, Vertically)
+        );
         batch.setColor(Color.WHITE);
-
-//        batch.setColor(originalColor);
     }
 
     public void dispose() {
         if (placeholderTexture != null) placeholderTexture.dispose();
+        atlas.dispose();
+        if (soundJump != null) soundJump.dispose();
+        if (soundDoubleJump != null) soundDoubleJump.dispose();
+        if (soundWallJump != null) soundWallJump.dispose();
+        if (soundWallSlide != null) soundWallSlide.dispose();
+        if (soundDash != null) soundDash.dispose();
+        if (soundHurt != null) soundHurt.dispose();
+        if (soundFootsteps != null) soundFootsteps.dispose();
+        if (soundDeath != null) soundDeath.dispose();
+        if (soundAttack != null) soundAttack.dispose();
     }
 
     public void setGrounded(boolean grounded) {
         this.isGrounded = grounded;
-
         if(isGrounded)
             jumpCount = 0;
+    }
+    public void setWallStates(boolean left, boolean right) {
+        this.isWalledLeft = left;
+        this.isWalledRight = right;
     }
     public Vector2 getVelocity() { return velocity; }
     public Vector2 getPosition() { return position; }
