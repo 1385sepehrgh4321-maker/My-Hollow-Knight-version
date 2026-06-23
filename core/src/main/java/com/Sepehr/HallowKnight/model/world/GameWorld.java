@@ -1,5 +1,7 @@
 package com.Sepehr.HallowKnight.model.world;
 
+import com.Sepehr.HallowKnight.model.entities.enemies.Enemy;
+import com.Sepehr.HallowKnight.model.entities.enemies.Mosscreep;
 import com.Sepehr.HallowKnight.model.entities.Player;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
@@ -7,6 +9,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.maps.MapLayer;
 import com.badlogic.gdx.maps.MapObject;
 import com.badlogic.gdx.maps.MapObjects;
 import com.badlogic.gdx.maps.objects.PointMapObject;
@@ -20,17 +23,21 @@ import com.badlogic.gdx.utils.Array;
 import games.rednblack.miniaudio.MASound;
 import games.rednblack.miniaudio.MiniAudio;
 
+import java.util.ArrayList;
+
 public class GameWorld {
-    private BitmapFont font;
-    private TiledMap map;
-    private OrthogonalTiledMapRenderer mapRenderer;
-    private Player player;
-    private Array<Rectangle> solidTiles = new Array<>();
-    private Array<Rectangle> hazardTiles = new Array<>();
+    private final BitmapFont font;
+    private final TiledMap map;
+    private final OrthogonalTiledMapRenderer mapRenderer;
+    private final Player player;
+    private final Array<Rectangle> solidTiles = new Array<>();
+    private final Array<Rectangle> hazardTiles = new Array<>();
+    private final ArrayList<Enemy> enemiesList = new ArrayList<>();
+    private final float totalMapHeightPixels;
 
     //audio
-    private MiniAudio miniAudio;
-    private MASound backgroundMusic;
+    private final MiniAudio miniAudio;
+    private final MASound backgroundMusic;
 
     //trigger and spawn
     private Rectangle nextMapPortal = null;
@@ -41,6 +48,7 @@ public class GameWorld {
     public GameWorld(String mapPath) {
         this.map = new TmxMapLoader().load(mapPath);
         this.mapRenderer = new OrthogonalTiledMapRenderer(map);
+        spawnEnemies(this.map);
 
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("ui/TrajanPro-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
@@ -56,7 +64,7 @@ public class GameWorld {
         float spawnY = 100;
         int mapHeightInTiles = map.getProperties().get("height", Integer.class);
         int tileHeightInPixels = map.getProperties().get("tileheight", Integer.class);
-        float totalMapHeightPixels = mapHeightInTiles * tileHeightInPixels;
+        totalMapHeightPixels = mapHeightInTiles * tileHeightInPixels;
         if (map.getLayers().get("player spawn") != null) {
             MapObjects spawnObjects = map.getLayers().get("player spawn").getObjects();
             if(spawnObjects.get("Spawn") != null) {
@@ -104,8 +112,41 @@ public class GameWorld {
 
     public void update(float delta) {
         player.update(delta);
+        for (int i = enemiesList.size() - 1; i >= 0; i--) {
+            Enemy enemy = enemiesList.get(i);
+            enemy.update(delta);
+            if (enemy.isDeadFinished()) {
+                enemy.dispose();
+                enemiesList.remove(i);
+            }
+        }
         handleCollisions(delta);
         checkMapTransitions();
+    }
+
+    public void spawnEnemies(TiledMap map) {
+
+        MapLayer enemyLayer = map.getLayers().get("enemy spawn");
+        if (enemyLayer == null) {
+            return;
+        }
+        for (MapObject object : enemyLayer.getObjects()) {
+            if (object instanceof com.badlogic.gdx.maps.objects.RectangleMapObject) {
+                if (object.getName() != null && object.getName().equalsIgnoreCase("mosscreep")) {
+                    Rectangle rect = ((RectangleMapObject) object).getRectangle();
+
+                    float leftBound = rect.x;
+                    float rightBound = rect.x + rect.width;
+                    float spawnX = rect.x + (rect.width / 2f);
+
+                    float spawnY = rect.y ;
+
+                    Mosscreep mosscreep = new Mosscreep(spawnX, spawnY, leftBound, rightBound);
+
+                    enemiesList.add(mosscreep);
+                }
+            }
+        }
     }
 
     private void checkMapTransitions() {
@@ -177,6 +218,9 @@ public class GameWorld {
         mapRenderer.render();
 
         batch.begin();
+        for (Enemy enemy : enemiesList) {
+            enemy.draw(batch);
+        }
         player.draw(batch);
         if (isPlayerInPortal()) {
             float textX = player.getPosition().x - 40;
@@ -195,6 +239,9 @@ public class GameWorld {
             backgroundMusic.dispose();
         if (miniAudio != null)
             miniAudio.dispose();
+        for (Enemy enemy : enemiesList) {
+            enemy.dispose();
+        }
     }
 
     public Player getPlayer() { return player; }
