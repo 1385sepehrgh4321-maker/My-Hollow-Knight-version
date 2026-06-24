@@ -27,10 +27,10 @@ public class Mosscreep extends Enemy{
     private boolean isFacingRight = false;
     private final int maxHealth = 2;
 
-    public Mosscreep(float spawnX, float spawnY, float leftBound, float rightBound) {
+    public Mosscreep(float spawnX, float spawnY, float leftBound, float rightBound , String path) {
         System.out.println("x:" + spawnX + "y:" + spawnY);
         super(spawnX, spawnY, 32, 24);
-        atlas = new  TextureAtlas(Gdx.files.internal("New folder/Mosscreep.atlas"));
+        atlas = new  TextureAtlas(Gdx.files.internal(path));
         this.health = maxHealth;
         this.leftBound = leftBound;
         this.rightBound = rightBound;

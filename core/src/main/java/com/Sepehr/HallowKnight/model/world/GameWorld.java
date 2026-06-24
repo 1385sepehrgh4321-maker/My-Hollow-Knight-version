@@ -1,8 +1,10 @@
 package com.Sepehr.HallowKnight.model.world;
 
 import com.Sepehr.HallowKnight.model.entities.enemies.Enemy;
+import com.Sepehr.HallowKnight.model.entities.enemies.HushHornhead;
 import com.Sepehr.HallowKnight.model.entities.enemies.Mosscreep;
 import com.Sepehr.HallowKnight.model.entities.Player;
+import com.Sepehr.HallowKnight.model.entities.enemies.WingedSentry;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -114,7 +116,12 @@ public class GameWorld {
         player.update(delta);
         for (int i = enemiesList.size() - 1; i >= 0; i--) {
             Enemy enemy = enemiesList.get(i);
-            enemy.update(delta);
+            if(enemy instanceof HushHornhead)
+                ((HushHornhead) enemy).updateAI(delta , player);
+            else if(enemy instanceof WingedSentry)
+                ((WingedSentry) enemy).updateAI(delta , player);
+            else
+                enemy.update(delta);
             if (enemy.isDeadFinished()) {
                 enemy.dispose();
                 enemiesList.remove(i);
@@ -132,18 +139,25 @@ public class GameWorld {
         }
         for (MapObject object : enemyLayer.getObjects()) {
             if (object instanceof com.badlogic.gdx.maps.objects.RectangleMapObject) {
+                Rectangle rect = ((RectangleMapObject) object).getRectangle();
+
+                float leftBound = rect.x;
+                float rightBound = rect.x + rect.width;
+                float spawnX = rect.x + (rect.width / 2f);
+
+                float spawnY = rect.y ;
                 if (object.getName() != null && object.getName().equalsIgnoreCase("mosscreep")) {
-                    Rectangle rect = ((RectangleMapObject) object).getRectangle();
 
-                    float leftBound = rect.x;
-                    float rightBound = rect.x + rect.width;
-                    float spawnX = rect.x + (rect.width / 2f);
-
-                    float spawnY = rect.y ;
-
-                    Mosscreep mosscreep = new Mosscreep(spawnX, spawnY, leftBound, rightBound);
-
+                    Mosscreep mosscreep = new Mosscreep(spawnX, spawnY, leftBound, rightBound , "New folder/Mosscreep.atlas");
                     enemiesList.add(mosscreep);
+                }
+                else if (object.getName() != null && object.getName().equalsIgnoreCase("hush hornhead")) {
+                    HushHornhead hushHornhead = new HushHornhead(spawnX , spawnY , leftBound , rightBound , "New folder/Hash Hornhead.atlas");
+                    enemiesList.add(hushHornhead);
+                }
+                else if (object.getName() != null && object.getName().equalsIgnoreCase("winged sentry")) {
+                    WingedSentry wingedSentry = new WingedSentry(spawnX , spawnY , leftBound , rightBound , "New folder/Wingedsentry.atlas");
+                    enemiesList.add(wingedSentry);
                 }
             }
         }
