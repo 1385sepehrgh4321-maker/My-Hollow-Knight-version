@@ -14,6 +14,7 @@ public class HollowKnightEngine extends Game {
     private Music menuMusic;
     private SpriteBatch batch;
     private I18NBundle bundle;
+    private int activeSlot = 1;
 
     @Override
     public void create() {
@@ -70,5 +71,13 @@ public class HollowKnightEngine extends Game {
 
     public SpriteBatch getBatch() {
         return batch;
+    }
+
+    public int getActiveSlot() {
+        return activeSlot;
+    }
+
+    public void setActiveSlot(int activeSlot) {
+        this.activeSlot = activeSlot;
     }
 }

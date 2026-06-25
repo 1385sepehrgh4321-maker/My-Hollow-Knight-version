@@ -1,10 +1,7 @@
 package com.Sepehr.HallowKnight.model.world;
 
-import com.Sepehr.HallowKnight.model.entities.enemies.Enemy;
-import com.Sepehr.HallowKnight.model.entities.enemies.HushHornhead;
-import com.Sepehr.HallowKnight.model.entities.enemies.Mosscreep;
+import com.Sepehr.HallowKnight.model.entities.enemies.*;
 import com.Sepehr.HallowKnight.model.entities.Player;
-import com.Sepehr.HallowKnight.model.entities.enemies.WingedSentry;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -120,6 +117,9 @@ public class GameWorld {
                 ((HushHornhead) enemy).updateAI(delta , player);
             else if(enemy instanceof WingedSentry)
                 ((WingedSentry) enemy).updateAI(delta , player);
+            else if (enemy instanceof Crystallized) {
+                ((Crystallized) enemy).updateAI(delta , player);
+            }
             else
                 enemy.update(delta);
             if (enemy.isDeadFinished()) {
@@ -158,6 +158,11 @@ public class GameWorld {
                 else if (object.getName() != null && object.getName().equalsIgnoreCase("winged sentry")) {
                     WingedSentry wingedSentry = new WingedSentry(spawnX , spawnY , leftBound , rightBound , "New folder/Wingedsentry.atlas");
                     enemiesList.add(wingedSentry);
+                }
+                else if (object.getName() != null && object.getName().equalsIgnoreCase("crystallized")) {
+                    Crystallized crystallized = new Crystallized(spawnX , spawnY , leftBound , rightBound , "New folder/Crystallized.atlas");
+                    enemiesList.add(crystallized);
+                    System.out.println("hello");
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.Sepehr.HallowKnight.Menu;
 import com.Sepehr.HallowKnight.HollowKnightEngine;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Preferences;
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
@@ -11,10 +12,12 @@ import com.badlogic.gdx.utils.I18NBundle;
 public class SettingMenu extends BaseMenu{
     private Preferences prefs;
     I18NBundle bundle;
+    private Screen previousScreen;
 
-    public SettingMenu(HollowKnightEngine engine) {
+    public SettingMenu(HollowKnightEngine engine , Screen previousScreen) {
         super(engine);
         bundle = engine.getBundle();
+        this.previousScreen = previousScreen;
     }
 
     @Override
@@ -34,7 +37,7 @@ public class SettingMenu extends BaseMenu{
         editControllers.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                engine.setScreen(new ControllersMenu(engine));
+                engine.setScreen(new ControllersMenu(engine , SettingMenu.this));
             }
         });
 
@@ -112,7 +115,7 @@ public class SettingMenu extends BaseMenu{
                 prefs.putString("language", selectedLang);
                 prefs.flush();
                 engine.loadLocalization();
-                engine.setScreen(new SettingMenu(engine));
+                engine.setScreen(new SettingMenu(engine , new MainMenu(engine)));
             }
         });
 
@@ -120,7 +123,7 @@ public class SettingMenu extends BaseMenu{
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                engine.setScreen(new MainMenu(engine));
+                engine.setScreen(previousScreen);
             }
         });
 

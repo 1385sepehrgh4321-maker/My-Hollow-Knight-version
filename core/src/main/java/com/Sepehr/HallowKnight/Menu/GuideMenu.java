@@ -4,6 +4,7 @@ import com.Sepehr.HallowKnight.HollowKnightEngine;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Preferences;
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
@@ -16,10 +17,12 @@ public class GuideMenu extends BaseMenu{
     private Preferences controlPrefs;
     private Preferences savePrefs;
     private I18NBundle bundle;
+    private Screen previousMenu;
 
-    public GuideMenu(HollowKnightEngine engine) {
+    public GuideMenu(HollowKnightEngine engine , Screen previousMenu) {
         super(engine);
         bundle = engine.getBundle();
+        this.previousMenu = previousMenu;
     }
 
     @Override
@@ -78,7 +81,7 @@ public class GuideMenu extends BaseMenu{
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                engine.setScreen(new MainMenu(engine));
+                engine.setScreen(previousMenu);
             }
         });
         Table backTable = new Table();

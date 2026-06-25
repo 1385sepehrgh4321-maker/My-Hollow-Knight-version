@@ -15,10 +15,12 @@ public class ControllersMenu extends BaseMenu{
     private String actionToRemap = "";
     private TextButton activeRemapButton = null;
     I18NBundle bundle;
+    private Screen previousScreen;
 
-    public ControllersMenu(HollowKnightEngine engine) {
+    public ControllersMenu(HollowKnightEngine engine , Screen previousScreen) {
         super(engine);
         bundle = engine.getBundle();
+        this.previousScreen = previousScreen;
     }
 
     @Override
@@ -128,7 +130,7 @@ public class ControllersMenu extends BaseMenu{
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                engine.setScreen(new SettingMenu(engine));
+                engine.setScreen(previousScreen);
             }
         });
         table.add(backBtn).colspan(2).padTop(25).row();

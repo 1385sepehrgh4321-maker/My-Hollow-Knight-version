@@ -31,6 +31,13 @@ public class MainMenu extends BaseMenu{
     public void show() {
         super.show();
 
+        if (engine.getMenuMusic() != null && !engine.getMenuMusic().isPlaying()) {
+            engine.getMenuMusic().setLooping(true);
+            engine.getMenuMusic().play();
+        }
+
+
+
         createMainMenuTable();
         createStartGameMenuTable();
 
@@ -45,6 +52,9 @@ public class MainMenu extends BaseMenu{
         mainMenuTable.bottom();
         mainMenuTable.padBottom(10);
 
+        if (logoTexture != null) {
+            logoTexture.dispose();
+        }
         logoTexture = new Texture(Gdx.files.internal("sprites/Hollow Knight/Menu/vheart_title_spanish.png"));
         Image logoImage = new Image(logoTexture);
         mainMenuTable.add(logoImage).width(600).height(150).padBottom(50).row();
@@ -67,7 +77,7 @@ public class MainMenu extends BaseMenu{
         settingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                engine.setScreen(new SettingMenu(engine));
+                engine.setScreen(new SettingMenu(engine ,  new MainMenu(engine)));
             }
         });
         mainMenuTable.add(settingBtn).row();
@@ -75,7 +85,7 @@ public class MainMenu extends BaseMenu{
         guideBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                engine.setScreen(new GuideMenu(engine));
+                engine.setScreen(new GuideMenu(engine , MainMenu.this));
             }
         });
         mainMenuTable.add(guideBtn).row();
@@ -105,8 +115,21 @@ public class MainMenu extends BaseMenu{
         newGameBtn.addListener(new NewGameListener(engine));
         startGameMenuTable.add(newGameBtn).row();
         for (int i = 1; i < 5; i++) {
-            TextButton loadSlot = new TextButton(bundle.get("lbl_load_save")+ i, skin);
-            loadSlot.addListener(new LoadGameListener(engine));
+            final int slotIndex = i;
+            com.badlogic.gdx.Preferences slotPrefs = com.badlogic.gdx.Gdx.app.getPreferences("HollowKnightSaveData_Slot_" + slotIndex);
+            String slotText = bundle.get("lbl_load_save") + " " + slotIndex;
+            if (slotPrefs.getBoolean("has_saved_data", false)) {
+                slotText += " (Saved)";
+            }
+
+            TextButton loadSlot = new TextButton(slotText, skin);
+            loadSlot.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    engine.setActiveSlot(slotIndex);
+                    engine.setScreen(new GameplayScreen(engine));
+                }
+            });
             startGameMenuTable.add(loadSlot).row();
         }
 
@@ -125,5 +148,12 @@ public class MainMenu extends BaseMenu{
         });
 
         startGameMenuTable.add(backBtn).padTop(20).row();
+    }
+
+    public void dispose() {
+        super.dispose();
+        if (logoTexture != null) {
+            logoTexture.dispose();
+        }
     }
 }

@@ -25,7 +25,9 @@ public class Player extends Entity{
     private final int MAX_JUMPS = 2;
     private final float DASH_DURATION = 0.2f;
     private final float DASH_COOLDOWN = 0.6f;
+    private static final float SPAWN_PROTECTION_DURATION = 1f;
 
+    private float spawnProtectionTimer = 0f;
     private int maxHealth = 5;
     private float invulnerabilityTimer = 0f;
     private boolean isGrounded = false;
@@ -129,7 +131,7 @@ public class Player extends Entity{
     }
 
     public void loadKeyBindings() {
-        Preferences prefs = Gdx.app.getPreferences("HollowKnightSettings");
+        Preferences prefs = Gdx.app.getPreferences("HollowKnightControls");
         this.keyLeft  = prefs.getInteger("key_left", Input.Keys.LEFT);
         this.keyRight = prefs.getInteger("key_right", Input.Keys.RIGHT);
         this.keyJump  = prefs.getInteger("key_jump", Input.Keys.Z);
@@ -142,6 +144,7 @@ public class Player extends Entity{
     @Override
     public void update(float delta) {
         stateTime += delta;
+
 
         if (invulnerabilityTimer > 0) invulnerabilityTimer -= delta;
         if (dashCooldownTimer > 0) dashCooldownTimer -= delta;
@@ -180,11 +183,18 @@ public class Player extends Entity{
 
         handleInput();
 
-        if ((isWalledLeft || isWalledRight) && velocity.y < 0) {
-            jumpCount = 0;
-            velocity.y += (GRAVITY * 0.35f) * delta;
-        } else {
-            velocity.y += GRAVITY * delta;
+        if (spawnProtectionTimer > 0) {
+            spawnProtectionTimer -= delta;
+            velocity.set(0, 0);
+        }
+        else {
+
+            if ((isWalledLeft || isWalledRight) && velocity.y < 0) {
+                jumpCount = 0;
+                velocity.y += (GRAVITY * 0.35f) * delta;
+            } else {
+                velocity.y += GRAVITY * delta;
+            }
         }
         evaluateStates();
         syncStateTimeline();
@@ -444,4 +454,8 @@ public class Player extends Entity{
     public Vector2 getPosition() { return position; }
     public boolean isInvulnerable() { return invulnerabilityTimer > 0; }
     public Vector2 getLastSafePosition() { return lastSafePosition; }
+    public void resetSpawnProtection() {
+        this.spawnProtectionTimer = SPAWN_PROTECTION_DURATION;
+        this.velocity.set(0, 0);
+    }
 }
