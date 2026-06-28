@@ -2,11 +2,15 @@ package com.Sepehr.HallowKnight.model.world;
 
 import com.Sepehr.HallowKnight.model.entities.enemies.*;
 import com.Sepehr.HallowKnight.model.entities.Player;
+import com.Sepehr.HallowKnight.model.entities.spells.HowlingWraiths;
+import com.Sepehr.HallowKnight.model.entities.spells.Spell;
+import com.Sepehr.HallowKnight.model.entities.spells.VengefulSpirit;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.maps.MapLayer;
 import com.badlogic.gdx.maps.MapObject;
@@ -32,6 +36,7 @@ public class GameWorld {
     private final Array<Rectangle> solidTiles = new Array<>();
     private final Array<Rectangle> hazardTiles = new Array<>();
     private final ArrayList<Enemy> enemiesList = new ArrayList<>();
+    private final Array<Spell> activeSpells = new Array<>();
     private final float totalMapHeightPixels;
 
     //audio
@@ -129,6 +134,7 @@ public class GameWorld {
         }
         handleCollisions(delta);
         checkPlayerAttacks();
+        handlePlayerSpells(delta);
         checkMapTransitions();
     }
 
@@ -163,7 +169,6 @@ public class GameWorld {
                 else if (object.getName() != null && object.getName().equalsIgnoreCase("crystallized")) {
                     Crystallized crystallized = new Crystallized(spawnX , spawnY , leftBound , rightBound , "New folder/Crystallized.atlas");
                     enemiesList.add(crystallized);
-                    System.out.println("hello");
                 }
             }
         }
@@ -255,6 +260,45 @@ public class GameWorld {
         }
     }
 
+    private void handlePlayerSpells(float delta) {
+        Player.SpellType pendingSpell = player.pollPendingSpell();
+        if (pendingSpell == Player.SpellType.VENGEFUL_SPIRIT) {
+            float spawnX = player.isFacingRight() ? (player.getPosition().x + player.getHitbox().width) : (player.getPosition().x - 40f);
+            float spawnY = player.getPosition().y + (player.getHitbox().height / 3f);
+
+            activeSpells.add(new VengefulSpirit(spawnX, spawnY, player.isFacingRight(), new TextureAtlas(Gdx.files.internal("New folder/Shadowball.atlas")), miniAudio));
+        }
+        else if (pendingSpell == Player.SpellType.HOWLING_WRAITHS) {
+            activeSpells.add(new HowlingWraiths(player.getPosition().x, player.getPosition().y, player.getHitbox().width, new TextureAtlas(Gdx.files.internal("New folder/Shadowscream.atlas")) , miniAudio));
+        }
+        for (int i = activeSpells.size - 1; i >= 0; i--) {
+            Spell spell = activeSpells.get(i);
+            spell.update(delta);
+
+            boolean hitWall = false;
+            for (Rectangle tile : solidTiles) {
+                if (spell.getHitbox().overlaps(tile)) {
+                    hitWall = true;
+                    break;
+                }
+            }
+            if (spell.shouldDestroyOnWalls() && hitWall) {
+                spell.destroy();
+                activeSpells.removeIndex(i);
+                continue;
+            }
+
+            for (Enemy enemy : enemiesList) {
+                if (enemy.getHealth() > 0 && spell.getHitbox().overlaps(enemy.getHitbox())) {
+                    spell.handleEnemyCollision(enemy);
+                }
+            }
+            if (!spell.isActive()) {
+                activeSpells.removeIndex(i);
+            }
+        }
+    }
+
     public void render(OrthographicCamera camera, SpriteBatch batch) {
         com.badlogic.gdx.utils.ScreenUtils.clear(0, 0, 0, 1);
 
@@ -267,6 +311,11 @@ public class GameWorld {
         for (Enemy enemy : enemiesList) {
             enemy.draw(batch);
         }
+
+        for (Spell spell : activeSpells) {
+            spell.draw(batch);
+        }
+
         player.draw(batch);
         if (isPlayerInPortal()) {
             float textX = player.getPosition().x - 40;

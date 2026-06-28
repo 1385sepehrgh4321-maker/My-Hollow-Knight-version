@@ -72,6 +72,9 @@ public class Player extends Entity{
     private Animation<TextureRegion> animSlashDown;
     private Animation<TextureRegion> animHurt;
     private Animation<TextureRegion> animDeath;
+    private Animation<TextureRegion> animFireballCast;
+    private Animation<TextureRegion> animScreamCast;
+    private Animation<TextureRegion> animFocus;
 
     //audio
     private games.rednblack.miniaudio.MiniAudio miniAudio;
@@ -90,14 +93,20 @@ public class Player extends Entity{
     private boolean hasPlayedDeathSound = false;
 
     public enum State {
-        IDLE, RUNNING, AIRBORNE, FALLING, DOUBLE_JUMPING, WALL_SLIDING, DASHING, ATTACKING, HURT, DEATH
+        IDLE, RUNNING, AIRBORNE, FALLING, DOUBLE_JUMPING, WALL_SLIDING, DASHING, ATTACKING, HURT, DEATH , CASTING
     }
     private State currentState = State.IDLE;
     private State previousState = State.IDLE;
     private float stateTime = 0f;
 
     //controllers
-    private int keyLeft, keyRight, keyJump, keyDash, keyAttack, keyUp, keyDown;
+    private int keyLeft, keyRight, keyJump, keyDash, keyAttack, keyUp, keyFocusHeal , keyDown , keySpellVengefulSpirit , keySpellHowlingWraiths;
+
+    //spells
+    public enum SpellType { NONE, VENGEFUL_SPIRIT, HOWLING_WRAITHS , HEAL }
+    private SpellType activeCastType = SpellType.NONE;
+    private float castAnimationLockTimer = 0f;
+    private SpellType spellSpawningBuffer = SpellType.NONE;
 
     public Player(float x, float y , MiniAudio miniAudio) {
         startPos = new Vector2(x , y);
@@ -121,6 +130,9 @@ public class Player extends Entity{
         animSlashDown   = new Animation<>(0.05f, atlas.findRegions("DownSlash"), Animation.PlayMode.NORMAL);
         animHurt        = new Animation<>(0.10f, atlas.findRegions("Idle Hurt"), Animation.PlayMode.LOOP);
         animDeath       = new Animation<>(0.10f, atlas.findRegions("Death"), Animation.PlayMode.NORMAL);
+        animFireballCast = new Animation<>(0.05f, atlas.findRegions("Fireball Cast"), Animation.PlayMode.NORMAL);
+        animScreamCast   = new Animation<>(0.06f, atlas.findRegions("Scream"), Animation.PlayMode.NORMAL);
+        animFocus        = new Animation<>(0.08f, atlas.findRegions("Focus"), Animation.PlayMode.LOOP);
 
         soundJump       = miniAudio.createSound("audio/hero_jump.wav");
         soundDoubleJump = miniAudio.createSound("audio/hero_wings.wav");
@@ -150,6 +162,9 @@ public class Player extends Entity{
         this.keyAttack = prefs.getInteger("key_attack", Input.Keys.X);
         this.keyUp    = prefs.getInteger("key_up", Input.Keys.UP);
         this.keyDown  = prefs.getInteger("key_down", Input.Keys.DOWN);
+        this.keySpellVengefulSpirit = prefs.getInteger("key_spell_vengeful", Input.Keys.S);
+        this.keySpellHowlingWraiths = prefs.getInteger("key_spell_wraiths", Input.Keys.D);
+        this.keyFocusHeal = prefs.getInteger("key_focus_heal", Input.Keys.A);
     }
 
     @Override
@@ -167,6 +182,15 @@ public class Player extends Entity{
         if (health <= 0) {
             currentState = State.DEATH;
             velocity.set(0, 0);
+            if (isFootstepSoundPlaying) { soundFootsteps.stop(); isFootstepSoundPlaying = false; }
+            if (isWallSlideSoundPlaying) { soundWallSlide.stop(); isWallSlideSoundPlaying = false; }
+
+            if (!hasPlayedDeathSound) {
+                soundDeath.setVolume(0.7f);
+                soundDeath.play();
+                hasPlayedDeathSound = true;
+            }
+
             if (animDeath.isAnimationFinished(stateTime)) {
                 handleDeath();
             }
@@ -187,6 +211,21 @@ public class Player extends Entity{
                 velocity.x = 0;
             }
             currentState = State.DASHING;
+            syncStateTimeline();
+            return;
+        }
+
+        if (activeCastType != SpellType.NONE) {
+            castAnimationLockTimer -= delta;
+            velocity.set(0, 0);
+            currentState = State.CASTING;
+
+            if (castAnimationLockTimer <= 0) {
+                if (activeCastType == SpellType.HEAL) {
+                    tryHeal();
+                }
+                activeCastType = SpellType.NONE;
+            }
             syncStateTimeline();
             return;
         }
@@ -277,8 +316,8 @@ public class Player extends Entity{
                     soundJump.play();
                 } else if ((isWalledLeft || isWalledRight) && !isGrounded) {
                     velocity.y = JUMP_VELOCITY * 0.9f;
-//               velocity.x = isWalledLeft ? MOVE_SPEED : -MOVE_SPEED;
-//               isFacingRight = isWalledLeft;
+               velocity.x = isWalledLeft ? MOVE_SPEED : -MOVE_SPEED;
+               isFacingRight = isWalledLeft;
                     jumpCount = 1;
                     soundWallJump.setVolume(0.6f);
                     soundWallJump.play();
@@ -308,6 +347,36 @@ public class Player extends Entity{
                     attackDirection = 2; // Downward Pogo Slash
                 } else {
                     attackDirection = 0; // Neutral Facing Slash
+                }
+            }
+
+            if (Gdx.input.isKeyJustPressed(keySpellVengefulSpirit) && activeCastType == SpellType.NONE && !isDashing && !isAttacking) {
+                if (currentSoul >= SOUL_COST_PER_HEAL) {
+                    currentSoul -= SOUL_COST_PER_HEAL;
+                    activeCastType = SpellType.VENGEFUL_SPIRIT;
+                    castAnimationLockTimer = 0.35f;
+                    spellSpawningBuffer = SpellType.VENGEFUL_SPIRIT;
+                    stateTime = 0f;
+                    return;
+                }
+            }
+
+            if (Gdx.input.isKeyJustPressed(keySpellHowlingWraiths) && activeCastType == SpellType.NONE && !isDashing && !isAttacking) {
+                if (currentSoul >= SOUL_COST_PER_HEAL) {
+                    currentSoul -= SOUL_COST_PER_HEAL;
+                    activeCastType = SpellType.HOWLING_WRAITHS;
+                    castAnimationLockTimer = 0.45f;
+                    spellSpawningBuffer = SpellType.HOWLING_WRAITHS;
+                    stateTime = 0f;
+                    return;
+                }
+            }
+
+            if (Gdx.input.isKeyJustPressed(keyFocusHeal) && activeCastType == SpellType.NONE && !isDashing && !isAttacking) {
+                if (currentSoul >= SOUL_COST_PER_HEAL && currentMasks < maxMasks) {
+                    activeCastType = SpellType.HEAL;
+                    castAnimationLockTimer = 1.50f;
+                    stateTime = 0f;
                 }
             }
         }
@@ -397,6 +466,18 @@ public class Player extends Entity{
         switch (currentState) {
             case DEATH:
                 currentFrame = animDeath.getKeyFrame(stateTime, false);
+                break;
+            case CASTING:
+                if (activeCastType == SpellType.VENGEFUL_SPIRIT) {
+                    currentFrame = animFireballCast.getKeyFrame(stateTime, false);
+                } else if (activeCastType == SpellType.HOWLING_WRAITHS) {
+                    currentFrame = animScreamCast.getKeyFrame(stateTime, false);
+                }
+                else if (activeCastType == SpellType.HEAL) {
+                    currentFrame = animFocus.getKeyFrame(stateTime , true);
+                } else {
+                    currentFrame = animIdle.getKeyFrame(stateTime, true);
+                }
                 break;
             case HURT:
                 currentFrame = animHurt.getKeyFrame(stateTime, true);
@@ -518,6 +599,7 @@ public class Player extends Entity{
             this.velocity.y = JUMP_VELOCITY * 0.85f;
             this.isGrounded = false;
             this.jumpCount = 1;
+            this.hasDashedInAir = false;
         } else if (attackDirection == 0) {
             this.velocity.x = isFacingRight ? -200f : 200f;
             this.knockbackTimer = 0.07f;
@@ -577,6 +659,7 @@ public class Player extends Entity{
     public void tryHeal() {
         if (currentSoul >= SOUL_COST_PER_HEAL && currentMasks < maxMasks) {
             currentSoul -= SOUL_COST_PER_HEAL;
+            health++;
             currentMasks++;
         }
     }
@@ -586,4 +669,18 @@ public class Player extends Entity{
     public int getMaxMasks() { return maxMasks; }
 
     public float getSoulPercentage() { return currentSoul / maxSoul; }
+
+    public SpellType pollPendingSpell() {
+        SpellType type = spellSpawningBuffer;
+        spellSpawningBuffer = SpellType.NONE;
+        return type;
+    }
+
+    public TextureAtlas getAtlas() {
+        return this.atlas;
+    }
+
+    public boolean isFacingRight() {
+        return this.isFacingRight;
+    }
 }
