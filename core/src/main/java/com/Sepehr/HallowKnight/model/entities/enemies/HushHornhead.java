@@ -64,6 +64,19 @@ public class HushHornhead extends Enemy{
     }
 
     public void updateAI(float delta , Player player) {
+        if (enemyKnockbackTimer > 0) {
+            enemyKnockbackTimer -= delta;
+            position.x += enemyKnockbackVelocityX * delta;
+            enemyKnockbackVelocityX *= 0.85f;
+            if (position.x <= leftBound) {
+                position.x = leftBound;
+            } else if (position.x >= rightBound - hitbox.width) {
+                position.x = rightBound - hitbox.width;
+            }
+            updateHitbox();
+            stateTime += delta;
+            return;
+        }
         stateTime += delta;
 
         if (health <= 0 && currentState != State.DEATH_AIR && currentState != State.DEATH_LAND) {
@@ -173,6 +186,14 @@ public class HushHornhead extends Enemy{
                 velocity.set(0, 0);
                 break;
         }
+    }
+
+    public void onPlayerHit() {
+        this.velocity.set(0, 0);
+        this.enemyKnockbackTimer = 0f;
+        this.enemyKnockbackVelocityX = 0f;
+        this.currentState = State.IDLE;
+        this.stateTime = 0f;
     }
 
     private void changeState(State newState) {

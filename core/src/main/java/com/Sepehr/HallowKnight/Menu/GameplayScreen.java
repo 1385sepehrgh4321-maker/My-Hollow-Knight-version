@@ -26,6 +26,8 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
     private PauseMenu pauseMenu;
     private Skin pauseSkin;
 
+    private GameHUD hud;
+
     public GameplayScreen(HollowKnightEngine engine) {
         this.engine = engine;
     }
@@ -35,6 +37,7 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
             camera = new OrthographicCamera();
             viewport = new FitViewport(1280, 720, camera);
             world = new GameWorld("maps/Greenpath Hollow Knight/Hollow GreenPath.tmx");
+            hud = new GameHUD();
 
             com.badlogic.gdx.maps.tiled.TiledMap map = world.getMap();
             com.badlogic.gdx.maps.MapProperties prop = map.getProperties();
@@ -85,6 +88,7 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
             pauseMenu.setInputFocus();
         }
     }
+
     private void setupPauseSkin() {
         pauseSkin = new Skin();
         TextureAtlas atlas = new TextureAtlas(Gdx.files.internal("ui/HollowSkin.atlas"));
@@ -135,6 +139,10 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         world.render(camera, engine.getBatch());
 
+        if (world.getPlayer() != null) {
+            hud.draw(engine.getBatch(), world.getPlayer());
+        }
+
         if (isPaused) {
             pauseMenu.updateAndDraw(delta);
         }
@@ -178,6 +186,9 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
 
     public void resize(int width, int height) {
         viewport.update(width, height);
+        if (hud != null) {
+            hud.resize(width, height);
+        }
     }
 
     @Override
@@ -199,6 +210,11 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
         if (pauseSkin != null) {
             pauseSkin.dispose();
             pauseSkin = null;
+        }
+
+        if (hud != null) {
+            hud.dispose();
+            hud = null;
         }
     }
 }

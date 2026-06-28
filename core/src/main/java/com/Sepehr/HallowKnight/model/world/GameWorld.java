@@ -128,6 +128,7 @@ public class GameWorld {
             }
         }
         handleCollisions(delta);
+        checkPlayerAttacks();
         checkMapTransitions();
     }
 
@@ -223,6 +224,32 @@ public class GameWorld {
         for (Rectangle hazard : hazardTiles) {
             if (player.getHitbox().overlaps(hazard)) {
                 player.takeHazardDamage(1);
+                break;
+            }
+        }
+
+        for (Enemy enemy : enemiesList) {
+            if (enemy.getHealth() > 0 && player.getHitbox().overlaps(enemy.getHitbox())) {
+
+                boolean knockLeft = player.getPosition().x < enemy.getPosition().x;
+
+                player.takeDamage(1, knockLeft);
+                enemy.onPlayerHit();
+
+                break;
+            }
+        }
+    }
+
+    private void checkPlayerAttacks() {
+        Rectangle nailBox = player.getAttackHitbox();
+        if (nailBox == null) return;
+        for (Enemy enemy : enemiesList) {
+            if (enemy.getHealth() > 0 && nailBox.overlaps(enemy.getHitbox())) {
+                boolean hitFromLeft = player.getPosition().x < enemy.getPosition().x;
+                enemy.takeDamage(1, hitFromLeft);
+                player.onNailConnect();
+                player.gainSoul();
                 break;
             }
         }

@@ -1,6 +1,4 @@
 package com.Sepehr.HallowKnight.model.entities;
-
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Preferences;
@@ -11,6 +9,7 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import games.rednblack.miniaudio.MiniAudio;
 
@@ -26,7 +25,16 @@ public class Player extends Entity{
     private final float DASH_DURATION = 0.2f;
     private final float DASH_COOLDOWN = 0.6f;
     private static final float SPAWN_PROTECTION_DURATION = 1f;
+    private final float KNOCKBACK_DURATION = 0.5f;
+    private int maxMasks = 5;
+    private float maxSoul = 100f;
+    private float currentSoul = 0f;
+    private final float SOUL_PER_HIT = 11f;
+    private final float SOUL_COST_PER_HEAL = 33f;
 
+    private Vector2 startPos;
+    private int currentMasks = 5;
+    private float knockbackTimer = 0f;
     private float spawnProtectionTimer = 0f;
     private int maxHealth = 5;
     private float invulnerabilityTimer = 0f;
@@ -39,11 +47,13 @@ public class Player extends Entity{
     private float attackTimer = 0f;
     private final float ATTACK_DURATION = 0.25f;
     private int attackDirection = 0;
+    private boolean hasHitThisAttack = false;
     // dash
     private boolean isDashing = false;
     private float dashTimer = 0f;
     private float dashCooldownTimer = 0f;
     private float dashDirectionX = 0f;
+    private boolean hasDashedInAir = false;
     //jump
     private boolean isJumping = false;
     private float jumpTimer = 0f;
@@ -90,6 +100,7 @@ public class Player extends Entity{
     private int keyLeft, keyRight, keyJump, keyDash, keyAttack, keyUp, keyDown;
 
     public Player(float x, float y , MiniAudio miniAudio) {
+        startPos = new Vector2(x , y);
         super(x, y, 24, 40);
         this.miniAudio = miniAudio;
         loadKeyBindings();
@@ -148,13 +159,16 @@ public class Player extends Entity{
 
         if (invulnerabilityTimer > 0) invulnerabilityTimer -= delta;
         if (dashCooldownTimer > 0) dashCooldownTimer -= delta;
+        if (knockbackTimer > 0) {
+            knockbackTimer -= delta;
+            velocity.x *= 0.92;
+        }
 
         if (health <= 0) {
             currentState = State.DEATH;
             velocity.set(0, 0);
             if (animDeath.isAnimationFinished(stateTime)) {
-                //may change in the future
-                respawnAtLastSafeGround();
+                handleDeath();
             }
             return;
         }
@@ -232,71 +246,69 @@ public class Player extends Entity{
     }
 
     private void handleInput() {
-        // X-Axis Kinematics Logic
-        velocity.x = 0;
-        if (Gdx.input.isKeyPressed(keyLeft)) {
-            velocity.x = -MOVE_SPEED;
-            isFacingRight = false;
-        }
-        if (Gdx.input.isKeyPressed(keyRight)) {
-            velocity.x = MOVE_SPEED;
-            isFacingRight = true;
-        }
-
-        // Dash Trigger Core
-        if (Gdx.input.isKeyJustPressed(keyDash) && dashCooldownTimer <= 0) {
-            isDashing = true;
-            dashTimer = DASH_DURATION;
-            dashCooldownTimer = DASH_COOLDOWN;
-            dashDirectionX = isFacingRight ? 1f : -1f;
-            soundDash.setVolume(0.6f);
-            soundDash.play();
-            return;
-        }
-
-        // Jump Mechanics Mapping
-        if (Gdx.input.isKeyJustPressed(keyJump)) {
-            if (isGrounded) {
-                velocity.y = JUMP_VELOCITY;
-                jumpCount = 1;
-                isGrounded = false;
-                soundJump.setVolume(0.5f);
-                soundJump.play();
-            } else if ((isWalledLeft || isWalledRight) && !isGrounded) {
-                velocity.y = JUMP_VELOCITY * 0.9f;
-//                velocity.x = isWalledLeft ? MOVE_SPEED : -MOVE_SPEED;
-//                isFacingRight = isWalledLeft;
-                jumpCount = 1;
-                soundWallJump.setVolume(0.6f);
-                soundWallJump.play();
-            } else if (jumpCount < MAX_JUMPS) {
-                velocity.y = JUMP_VELOCITY * 0.9f;
-                jumpCount++;
-                currentState = State.DOUBLE_JUMPING;
+        if(knockbackTimer <= 0) {
+            // X-Axis Kinematics Logic
+            velocity.x = 0;
+            if (Gdx.input.isKeyPressed(keyLeft)) {
+                velocity.x = -MOVE_SPEED;
+                isFacingRight = false;
+            }
+            if (Gdx.input.isKeyPressed(keyRight)) {
+                velocity.x = MOVE_SPEED;
+                isFacingRight = true;
+            }
+            // Dash Trigger Core
+            if (Gdx.input.isKeyJustPressed(keyDash) && dashCooldownTimer <= 0) {
+                isDashing = true;
+                dashTimer = DASH_DURATION;
+                dashCooldownTimer = DASH_COOLDOWN;
+                dashDirectionX = isFacingRight ? 1f : -1f;
+                soundDash.setVolume(0.6f);
+                soundDash.play();
+                return;
+            }
+            // Jump Mechanics Mapping
+            if (Gdx.input.isKeyJustPressed(keyJump)) {
+                if (isGrounded) {
+                    velocity.y = JUMP_VELOCITY;
+                    jumpCount = 1;
+                    isGrounded = false;
+                    soundJump.setVolume(0.5f);
+                    soundJump.play();
+                } else if ((isWalledLeft || isWalledRight) && !isGrounded) {
+                    velocity.y = JUMP_VELOCITY * 0.9f;
+//               velocity.x = isWalledLeft ? MOVE_SPEED : -MOVE_SPEED;
+//               isFacingRight = isWalledLeft;
+                    jumpCount = 1;
+                    soundWallJump.setVolume(0.6f);
+                    soundWallJump.play();
+                } else if (jumpCount < MAX_JUMPS) {
+                    velocity.y = JUMP_VELOCITY * 0.9f;
+                    jumpCount++;
+                    currentState = State.DOUBLE_JUMPING;
+                    stateTime = 0f;
+                    soundDoubleJump.setVolume(0.6f);
+                    soundDoubleJump.play();
+                }
+            }
+            // Attack Mechanics Mapping
+            if (Gdx.input.isKeyJustPressed(keyAttack) && !isAttacking) {
+                isAttacking = true;
+                attackTimer = ATTACK_DURATION;
                 stateTime = 0f;
-                soundDoubleJump.setVolume(0.6f);
-                soundDoubleJump.play();
-            }
-        }
-
-        // Attack Mechanics Mapping
-        if (Gdx.input.isKeyJustPressed(keyAttack) && !isAttacking) {
-            isAttacking = true;
-            attackTimer = ATTACK_DURATION;
-            stateTime = 0f;
-
-            if (soundAttack != null) {
-                soundAttack.stop();
-                soundAttack.setVolume(0.5f);
-                soundAttack.play();
-            }
-
-            if (Gdx.input.isKeyPressed(keyUp)) {
-                attackDirection = 1; // Upward Slash
-            } else if (Gdx.input.isKeyPressed(keyDown) && !isGrounded) {
-                attackDirection = 2; // Downward Pogo Slash
-            } else {
-                attackDirection = 0; // Neutral Facing Slash
+                this.hasHitThisAttack = false;
+                if (soundAttack != null) {
+                    soundAttack.stop();
+                    soundAttack.setVolume(0.5f);
+                    soundAttack.play();
+                }
+                if (Gdx.input.isKeyPressed(keyUp)) {
+                    attackDirection = 1; // Upward Slash
+                } else if (Gdx.input.isKeyPressed(keyDown) && !isGrounded) {
+                    attackDirection = 2; // Downward Pogo Slash
+                } else {
+                    attackDirection = 0; // Neutral Facing Slash
+                }
             }
         }
     }
@@ -328,24 +340,41 @@ public class Player extends Entity{
 
     public void takeHazardDamage(int damage) {
         if (invulnerabilityTimer > 0 || health <= 0) return;
+
         this.health -= damage;
-        this.invulnerabilityTimer = INVULNERABILITY_DURATION;
-        stateTime = 0f;
-        soundHurt.setVolume(0.6f);
-        soundHurt.play();
+        loseMask(damage);
 
         if (this.health <= 0) {
-            currentState = State.DEATH;
+            this.health = 0;
+            this.currentState = State.DEATH;
+            this.stateTime = 0f;
+            this.velocity.set(0, 0);
         } else {
+            this.invulnerabilityTimer = INVULNERABILITY_DURATION;
+            this.stateTime = 0f;
+            if (soundHurt != null) {
+                soundHurt.setVolume(0.6f);
+                soundHurt.play();
+            }
             respawnAtLastSafeGround();
         }
     }
 
     private void handleDeath() {
-        System.out.println("Game Over! The Knight perished.");
-        // TODO: Trigger full room reload screen, or reset health and send to a Bench checkpoint!
         this.health = maxHealth;
-        respawnAtLastSafeGround();
+        this.currentMasks = maxMasks;
+        this.position.set(startPos.x , startPos.y);
+        this.lastSafePosition.set(startPos.x, startPos.y + 2);
+
+        this.velocity.set(0, 0);
+        this.isDashing = false;
+        this.isAttacking = false;
+
+        this.currentState = State.IDLE;
+        this.stateTime = 0f;
+        this.hasPlayedDeathSound = false;
+
+        updateHitbox();
     }
 
     private void respawnAtLastSafeGround() {
@@ -427,6 +456,74 @@ public class Player extends Entity{
         batch.setColor(Color.WHITE);
     }
 
+    public void takeDamage(int amount, boolean knockLeft) {
+        if (invulnerabilityTimer > 0 || spawnProtectionTimer > 0 || health <= 0) return;
+
+        this.health -= amount;
+        loseMask(1);
+
+        if (this.health <= 0) {
+            this.health = 0;
+            this.currentState = State.DEATH;
+            this.stateTime = 0f;
+            this.velocity.set(0, 0);
+        } else {
+            this.invulnerabilityTimer = INVULNERABILITY_DURATION;
+            this.knockbackTimer = KNOCKBACK_DURATION;
+            this.stateTime = 0f;
+            this.velocity.y = 220f;
+            this.velocity.x = knockLeft ? -300f : 300f;
+
+            if (soundHurt != null) {
+                soundHurt.setVolume(0.6f);
+                soundHurt.play();
+            }
+        }
+    }
+
+    public Rectangle getAttackHitbox() {
+        if (!isAttacking || hasHitThisAttack) return null;
+
+        Rectangle attackBox = new Rectangle();
+        float nailReach = 32f;
+        float nailThickness = 24f;
+
+        if (attackDirection == 0) {
+            attackBox.width = nailReach;
+            attackBox.height = nailThickness;
+            attackBox.y = position.y + (hitbox.height / 2f) - (nailThickness / 2f);
+            if (isFacingRight) {
+                attackBox.x = position.x + hitbox.width;
+            } else {
+                attackBox.x = position.x - nailReach;
+            }
+        } else if (attackDirection == 1) {
+            attackBox.width = hitbox.width + 12f;
+            attackBox.height = nailReach;
+            attackBox.x = position.x - 6f;
+            attackBox.y = position.y + hitbox.height;
+        } else if (attackDirection == 2) {
+            attackBox.width = hitbox.width + 12f;
+            attackBox.height = nailReach;
+            attackBox.x = position.x - 6f;
+            attackBox.y = position.y - nailReach;
+        }
+
+        return attackBox;
+    }
+
+    public void onNailConnect() {
+        this.hasHitThisAttack = true;
+        if (attackDirection == 2) {
+            this.velocity.y = JUMP_VELOCITY * 0.85f;
+            this.isGrounded = false;
+            this.jumpCount = 1;
+        } else if (attackDirection == 0) {
+            this.velocity.x = isFacingRight ? -200f : 200f;
+            this.knockbackTimer = 0.07f;
+        }
+    }
+
     public void dispose() {
         if (placeholderTexture != null) placeholderTexture.dispose();
         atlas.dispose();
@@ -443,19 +540,50 @@ public class Player extends Entity{
 
     public void setGrounded(boolean grounded) {
         this.isGrounded = grounded;
-        if(isGrounded)
+        if(isGrounded) {
             jumpCount = 0;
+            this.hasDashedInAir = false;
+        }
     }
+
     public void setWallStates(boolean left, boolean right) {
         this.isWalledLeft = left;
         this.isWalledRight = right;
     }
+
     public Vector2 getVelocity() { return velocity; }
+
     public Vector2 getPosition() { return position; }
+
     public boolean isInvulnerable() { return invulnerabilityTimer > 0; }
+
     public Vector2 getLastSafePosition() { return lastSafePosition; }
+
     public void resetSpawnProtection() {
         this.spawnProtectionTimer = SPAWN_PROTECTION_DURATION;
         this.velocity.set(0, 0);
     }
+
+    public void gainSoul() {
+        currentSoul = Math.min(maxSoul, currentSoul + SOUL_PER_HIT);
+    }
+
+    public void loseMask(int damage) {
+        currentMasks = Math.max(0, currentMasks - damage);
+        if (currentMasks <= 0) {
+        }
+    }
+
+    public void tryHeal() {
+        if (currentSoul >= SOUL_COST_PER_HEAL && currentMasks < maxMasks) {
+            currentSoul -= SOUL_COST_PER_HEAL;
+            currentMasks++;
+        }
+    }
+
+    public int getCurrentMasks() { return currentMasks; }
+
+    public int getMaxMasks() { return maxMasks; }
+
+    public float getSoulPercentage() { return currentSoul / maxSoul; }
 }
