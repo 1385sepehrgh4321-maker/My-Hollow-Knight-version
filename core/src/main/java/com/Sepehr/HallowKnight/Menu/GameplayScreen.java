@@ -24,6 +24,9 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
 
     private boolean isPaused = false;
     private PauseMenu pauseMenu;
+
+    private boolean isInventoryOpen = false;
+    private CharmInventoryOverlay charmInventoryOverlay;
     private Skin pauseSkin;
 
     private GameHUD hud;
@@ -78,6 +81,7 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
 
             setupPauseSkin();
             pauseMenu = new PauseMenu(pauseSkin, this);
+            charmInventoryOverlay = new CharmInventoryOverlay(engine , viewport , world.getPlayer());
         }
 
         if (engine.getMenuMusic() != null && engine.getMenuMusic().isPlaying()) {
@@ -113,7 +117,14 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
             }
         }
 
-        if (!isPaused) {
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.I)) {
+            if(!isInventoryOpen)
+                openInventory();
+            else
+                onContinue();
+        }
+
+        if (!isPaused && !isInventoryOpen) {
             world.update(delta);
         }
 
@@ -146,15 +157,27 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
         if (isPaused) {
             pauseMenu.updateAndDraw(delta);
         }
+
+        if (isInventoryOpen && charmInventoryOverlay != null) {
+            charmInventoryOverlay.render(delta);
+        }
     }
 
     private void pauseGame() {
         isPaused = true;
+        isInventoryOpen = false;
         pauseMenu.setInputFocus();
+    }
+
+    private void openInventory() {
+        isInventoryOpen = true;
+        isPaused = false;
+        Gdx.input.setInputProcessor(null);
     }
 
     public void onContinue() {
         isPaused = false;
+        isInventoryOpen = false;
         if (world != null && world.getPlayer() != null) {
             world.getPlayer().loadKeyBindings();
         }
@@ -215,6 +238,11 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
         if (hud != null) {
             hud.dispose();
             hud = null;
+        }
+
+        if (charmInventoryOverlay != null) {
+            charmInventoryOverlay.dispose();
+            charmInventoryOverlay = null;
         }
     }
 }

@@ -1,4 +1,6 @@
 package com.Sepehr.HallowKnight.model.entities;
+
+import com.Sepehr.HallowKnight.Menu.CharmType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Preferences;
@@ -12,25 +14,29 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import games.rednblack.miniaudio.MiniAudio;
+import java.util.HashSet;
 
 public class Player extends Entity{
     private Texture placeholderTexture;
-    private final float MOVE_SPEED = 300f;
-    private final float DASH_SPEED = 600f;
+    private float MOVE_SPEED = 300f;
+    private float DASH_SPEED = 600f;
     private final float JUMP_VELOCITY = 600f;
     private final float GRAVITY = -1500f;
     private final float INVULNERABILITY_DURATION = 1.5f;
     private final float MAX_JUMP_TIME = 0.3f;
     private final int MAX_JUMPS = 2;
     private final float DASH_DURATION = 0.2f;
-    private final float DASH_COOLDOWN = 0.6f;
+    private float DASH_COOLDOWN = 0.6f;
+    private float ATTACK_COOLDOWN = 0.75f;
     private static final float SPAWN_PROTECTION_DURATION = 1f;
     private final float KNOCKBACK_DURATION = 0.5f;
     private int maxMasks = 5;
     private float maxSoul = 100f;
     private float currentSoul = 0f;
-    private final float SOUL_PER_HIT = 11f;
+    private float SOUL_PER_HIT = 11f;
     private final float SOUL_COST_PER_HEAL = 33f;
+    private float HEAL_FOCUS_DURATION = 1.50f;
+    private int ATTACK_DAMAGE = 1;
 
     private Vector2 startPos;
     private int currentMasks = 5;
@@ -45,7 +51,8 @@ public class Player extends Entity{
     //attack
     private boolean isAttacking = false;
     private float attackTimer = 0f;
-    private final float ATTACK_DURATION = 0.25f;
+    private float attackCooldownTimer = 0f;
+    private float ATTACK_DURATION = 0.25f;
     private int attackDirection = 0;
     private boolean hasHitThisAttack = false;
     // dash
@@ -107,6 +114,9 @@ public class Player extends Entity{
     private SpellType activeCastType = SpellType.NONE;
     private float castAnimationLockTimer = 0f;
     private SpellType spellSpawningBuffer = SpellType.NONE;
+
+    //charms
+    private final HashSet<CharmType> equippedCharms = new HashSet<>();
 
     public Player(float x, float y , MiniAudio miniAudio) {
         startPos = new Vector2(x , y);
@@ -174,6 +184,8 @@ public class Player extends Entity{
 
         if (invulnerabilityTimer > 0) invulnerabilityTimer -= delta;
         if (dashCooldownTimer > 0) dashCooldownTimer -= delta;
+        if (attackCooldownTimer > 0) attackCooldownTimer -= delta;
+
         if (knockbackTimer > 0) {
             knockbackTimer -= delta;
             velocity.x *= 0.92;
@@ -331,9 +343,10 @@ public class Player extends Entity{
                 }
             }
             // Attack Mechanics Mapping
-            if (Gdx.input.isKeyJustPressed(keyAttack) && !isAttacking) {
+            if (Gdx.input.isKeyJustPressed(keyAttack) && !isAttacking && attackCooldownTimer <= 0) {
                 isAttacking = true;
                 attackTimer = ATTACK_DURATION;
+                attackCooldownTimer = ATTACK_COOLDOWN;
                 stateTime = 0f;
                 this.hasHitThisAttack = false;
                 if (soundAttack != null) {
@@ -375,7 +388,7 @@ public class Player extends Entity{
             if (Gdx.input.isKeyJustPressed(keyFocusHeal) && activeCastType == SpellType.NONE && !isDashing && !isAttacking) {
                 if (currentSoul >= SOUL_COST_PER_HEAL && currentMasks < maxMasks) {
                     activeCastType = SpellType.HEAL;
-                    castAnimationLockTimer = 1.50f;
+                    castAnimationLockTimer = HEAL_FOCUS_DURATION;
                     stateTime = 0f;
                 }
             }
@@ -668,6 +681,10 @@ public class Player extends Entity{
 
     public int getMaxMasks() { return maxMasks; }
 
+    public int getAttackDamage() {
+        return this.ATTACK_DAMAGE;
+    }
+
     public float getSoulPercentage() { return currentSoul / maxSoul; }
 
     public SpellType pollPendingSpell() {
@@ -682,5 +699,51 @@ public class Player extends Entity{
 
     public boolean isFacingRight() {
         return this.isFacingRight;
+    }
+
+    public boolean isCharmEquipped(CharmType type) {
+        return equippedCharms.contains(type);
+    }
+
+    public boolean toggleCharmState(CharmType type) {
+        if (equippedCharms.contains(type)) {
+            equippedCharms.remove(type);
+        } else {
+            equippedCharms.add(type);
+        }
+        recalculateCharmModifiers();
+        return true;
+    }
+
+    private void recalculateCharmModifiers() {
+        this.MOVE_SPEED = 300f;
+        this.DASH_SPEED = 600f;
+        this.DASH_COOLDOWN = 0.6f;
+        this.ATTACK_DURATION = 0.25f;
+        this.SOUL_PER_HIT = 11f;
+        this.ATTACK_COOLDOWN = 0.75f;
+        this.HEAL_FOCUS_DURATION = 1.50f;
+        this.ATTACK_DAMAGE = 1;
+        if (equippedCharms.contains(CharmType.QUICK_SLASH)) {
+            this.ATTACK_DURATION = 0.14f;
+            this.ATTACK_COOLDOWN = 0.5f;
+        }
+
+        if (equippedCharms.contains(CharmType.DASHMASTER)) {
+            this.DASH_COOLDOWN = 0.35f;
+        }
+
+        if (equippedCharms.contains(CharmType.SOUL_CATCHER)) {
+            this.SOUL_PER_HIT = 17f;
+        }
+
+        if (equippedCharms.contains(CharmType.QUICK_FOCUS)) {
+            this.HEAL_FOCUS_DURATION = 0.95f;
+        }
+
+        if(equippedCharms.contains(CharmType.UNBREAKABLE_STRENGTH)) {
+            this.ATTACK_DAMAGE = 2;
+        }
+
     }
 }

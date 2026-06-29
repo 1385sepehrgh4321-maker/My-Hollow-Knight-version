@@ -252,7 +252,7 @@ public class GameWorld {
         for (Enemy enemy : enemiesList) {
             if (enemy.getHealth() > 0 && nailBox.overlaps(enemy.getHitbox())) {
                 boolean hitFromLeft = player.getPosition().x < enemy.getPosition().x;
-                enemy.takeDamage(1, hitFromLeft);
+                enemy.takeDamage(player.getAttackDamage(), hitFromLeft);
                 player.onNailConnect();
                 player.gainSoul();
                 break;
