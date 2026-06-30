@@ -125,6 +125,9 @@ public class GameWorld {
             else if (enemy instanceof Crystallized) {
                 ((Crystallized) enemy).updateAI(delta , player);
             }
+            else if(enemy instanceof FalseKnight) {
+                ((FalseKnight) enemy).updateAI(delta , player);
+            }
             else
                 enemy.update(delta);
             if (enemy.isDeadFinished()) {
@@ -169,6 +172,11 @@ public class GameWorld {
                 else if (object.getName() != null && object.getName().equalsIgnoreCase("crystallized")) {
                     Crystallized crystallized = new Crystallized(spawnX , spawnY , leftBound , rightBound , "New folder/Crystallized.atlas");
                     enemiesList.add(crystallized);
+                }
+                else if(object.getName() != null && object.getName().equalsIgnoreCase("false knight")) {
+                    FalseKnight falseKnight = new FalseKnight(spawnX , spawnY , leftBound , rightBound , "New folder/Falseknight.atlas" , 50);
+                    enemiesList.add(falseKnight);
+                    System.out.println("hello");
                 }
             }
         }

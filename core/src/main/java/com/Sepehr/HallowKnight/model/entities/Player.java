@@ -21,7 +21,7 @@ public class Player extends Entity{
     private float MOVE_SPEED = 300f;
     private float DASH_SPEED = 600f;
     private final float JUMP_VELOCITY = 600f;
-    private final float GRAVITY = -1500f;
+    private final float GRAVITY = -750f;
     private final float INVULNERABILITY_DURATION = 1.5f;
     private final float MAX_JUMP_TIME = 0.3f;
     private final int MAX_JUMPS = 2;
@@ -579,8 +579,8 @@ public class Player extends Entity{
         if (!isAttacking || hasHitThisAttack) return null;
 
         Rectangle attackBox = new Rectangle();
-        float nailReach = 32f;
-        float nailThickness = 24f;
+        float nailReach = 64f;
+        float nailThickness = 48f;
 
         if (attackDirection == 0) {
             attackBox.width = nailReach;
