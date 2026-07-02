@@ -41,8 +41,8 @@ public class Crystallized extends Enemy{
     private final Animation<TextureRegion> animDeathAir;
     private final Animation<TextureRegion> animDeathLand;
 
-    public Crystallized(float spawnX, float spawnY, float leftBound, float rightBound, String path) {
-        super(spawnX, spawnY, 56, 40);
+    public Crystallized(String mobName , float spawnX, float spawnY, float leftBound, float rightBound, String path) {
+        super(mobName ,spawnX, spawnY, 56, 40);
         this.atlas = new TextureAtlas(Gdx.files.internal(path));
         this.health = 3;
         this.leftBound = leftBound;
@@ -80,6 +80,7 @@ public class Crystallized extends Enemy{
         stateTime += delta;
 
         if (health <= 0 && currentState != State.DEATH_AIR && currentState != State.DEATH_LAND) {
+            die();
             changeState(State.DEATH_AIR);
             return;
         }

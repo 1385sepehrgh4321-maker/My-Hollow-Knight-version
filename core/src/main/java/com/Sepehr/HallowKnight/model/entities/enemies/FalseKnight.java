@@ -77,8 +77,8 @@ public class FalseKnight extends Enemy{
     private final Animation<TextureRegion> animDeathFall;
     private final Animation<TextureRegion> animDeathLand;
 
-    public FalseKnight(float spawnX, float spawnY, float leftBound, float rightBound, String atlasPath, int maxHp) {
-        super(spawnX, spawnY, 140, 190);
+    public FalseKnight(String mobName , float spawnX, float spawnY, float leftBound, float rightBound, String atlasPath, int maxHp) {
+        super(mobName , spawnX, spawnY, 140, 190);
         this.groundY = spawnY;
         this.atlas = new TextureAtlas(Gdx.files.internal(atlasPath));
         this.maxHealth = maxHp;
@@ -140,6 +140,7 @@ public class FalseKnight extends Enemy{
 
         if (health <= 0 && !isDyingState()) {
             changeState(State.DEATH_HIT);
+            die();
             return;
         }
 

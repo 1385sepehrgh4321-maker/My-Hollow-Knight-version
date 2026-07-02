@@ -769,4 +769,6 @@ public class Player extends Entity{
         this.isGrounded = false;
     }
 
+    public HashSet<CharmType> getEquippedCharms() { return this.equippedCharms; }
+
 }

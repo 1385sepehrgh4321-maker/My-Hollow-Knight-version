@@ -42,8 +42,8 @@ public class WingedSentry extends Enemy{
     private final Animation<TextureRegion> animDeathAir;
     private final Animation<TextureRegion> animDeathLand;
 
-    public WingedSentry(float spawnX , float spawnY , float leftBound , float rightBound , String path) {
-        super(spawnX, spawnY, 64, 50);
+    public WingedSentry(String mobName , float spawnX , float spawnY , float leftBound , float rightBound , String path) {
+        super(mobName , spawnX, spawnY, 64, 50);
         spawnPosition.x = (leftBound + rightBound)/2;
         spawnPosition.y = spawnY;
         this.atlas = new TextureAtlas(Gdx.files.internal(path));
@@ -83,6 +83,7 @@ public class WingedSentry extends Enemy{
 
         if (health <= 0 && currentState != State.DEATH_AIR && currentState != State.DEATH_LAND) {
             changeState(State.DEATH_AIR);
+            die();
             return;
         }
 

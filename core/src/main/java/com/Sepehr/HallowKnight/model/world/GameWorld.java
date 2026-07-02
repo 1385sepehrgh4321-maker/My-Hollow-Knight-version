@@ -261,25 +261,24 @@ public class GameWorld {
                 float spawnY = rect.y ;
                 if (object.getName() != null && object.getName().equalsIgnoreCase("mosscreep")) {
 
-                    Mosscreep mosscreep = new Mosscreep(spawnX, spawnY, leftBound, rightBound , "New folder/Mosscreep.atlas");
+                    Mosscreep mosscreep = new Mosscreep("mosscreep" , spawnX, spawnY, leftBound, rightBound , "New folder/Mosscreep.atlas");
                     enemiesList.add(mosscreep);
                 }
                 else if (object.getName() != null && object.getName().equalsIgnoreCase("hush hornhead")) {
-                    HushHornhead hushHornhead = new HushHornhead(spawnX , spawnY , leftBound , rightBound , "New folder/Hash Hornhead.atlas");
+                    HushHornhead hushHornhead = new HushHornhead("hushhornhead" , spawnX , spawnY , leftBound , rightBound , "New folder/Hash Hornhead.atlas");
                     enemiesList.add(hushHornhead);
                 }
                 else if (object.getName() != null && object.getName().equalsIgnoreCase("winged sentry")) {
-                    WingedSentry wingedSentry = new WingedSentry(spawnX , spawnY , leftBound , rightBound , "New folder/Wingedsentry.atlas");
+                    WingedSentry wingedSentry = new WingedSentry("wingedsentry" , spawnX , spawnY , leftBound , rightBound , "New folder/Wingedsentry.atlas");
                     enemiesList.add(wingedSentry);
                 }
                 else if (object.getName() != null && object.getName().equalsIgnoreCase("crystallized")) {
-                    Crystallized crystallized = new Crystallized(spawnX , spawnY , leftBound , rightBound , "New folder/Crystallized.atlas");
+                    Crystallized crystallized = new Crystallized("crystallized" , spawnX , spawnY , leftBound , rightBound , "New folder/Crystallized.atlas");
                     enemiesList.add(crystallized);
                 }
                 else if(object.getName() != null && object.getName().equalsIgnoreCase("false knight")) {
-                    FalseKnight falseKnight = new FalseKnight(spawnX , spawnY , leftBound , rightBound , "New folder/Falseknight.atlas" , 50);
+                    FalseKnight falseKnight = new FalseKnight("falseknight" , spawnX , spawnY , leftBound , rightBound , "New folder/Falseknight.atlas" , 50);
                     enemiesList.add(falseKnight);
-                    System.out.println("hello");
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.Sepehr.HallowKnight.Menu;
 
 import com.Sepehr.HallowKnight.HollowKnightEngine;
+import com.Sepehr.HallowKnight.model.event.AchievementManager;
 import com.Sepehr.HallowKnight.model.save.JsonLoader;
 import com.Sepehr.HallowKnight.model.save.SaveData;
 import com.Sepehr.HallowKnight.model.world.GameWorld;
@@ -17,6 +18,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 
 public class GameplayScreen implements Screen , PauseMenu.PauseListener {
+    private AchievementPopupOverlay achievementPopupOverlay;
     private final HollowKnightEngine engine;
     private OrthographicCamera camera;
     private FitViewport viewport;
@@ -90,6 +92,9 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
             }
 
             setupPauseSkin();
+
+            this.achievementPopupOverlay = new AchievementPopupOverlay(pauseSkin);
+
             pauseMenu = new PauseMenu(pauseSkin, this);
             charmInventoryOverlay = new CharmInventoryOverlay(engine , viewport , world.getPlayer());
         }
@@ -136,6 +141,7 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
 
         if (!isPaused && !isInventoryOpen) {
             world.update(delta);
+            AchievementManager.getInstance().updateFrameChecks(delta, world.getPlayer());
         }
 
         if (world.getPlayer() != null) {
@@ -170,6 +176,10 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
 
         if (isInventoryOpen && charmInventoryOverlay != null) {
             charmInventoryOverlay.render(delta);
+        }
+
+        if (achievementPopupOverlay != null) {
+            achievementPopupOverlay.updateAndRender(delta);
         }
     }
 
@@ -247,6 +257,11 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
         if (charmInventoryOverlay != null) {
             charmInventoryOverlay.dispose();
             charmInventoryOverlay = null;
+        }
+
+        if (achievementPopupOverlay != null) {
+            achievementPopupOverlay.dispose();
+            achievementPopupOverlay = null;
         }
     }
 }

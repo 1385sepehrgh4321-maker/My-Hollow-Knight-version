@@ -42,8 +42,8 @@ public class HushHornhead extends Enemy{
 
     private boolean isFacingRight = false;
 
-    public HushHornhead(float spawnX, float spawnY, float leftBound, float rightBound , String path) {
-        super(spawnX, spawnY, 64, 40);
+    public HushHornhead(String mobName , float spawnX, float spawnY, float leftBound, float rightBound , String path) {
+        super(mobName , spawnX, spawnY, 64, 40);
         this.atlas = new TextureAtlas(Gdx.files.internal(path));
         this.health = 3;
         this.leftBound = leftBound;
@@ -81,6 +81,7 @@ public class HushHornhead extends Enemy{
 
         if (health <= 0 && currentState != State.DEATH_AIR && currentState != State.DEATH_LAND) {
             changeState(State.DEATH_AIR);
+            die();
             return;
         }
         float distanceToPlayer = position.dst(player.getPosition());
