@@ -1,6 +1,8 @@
 package com.Sepehr.HallowKnight.Menu;
 
 import com.Sepehr.HallowKnight.HollowKnightEngine;
+import com.Sepehr.HallowKnight.model.save.JsonLoader;
+import com.Sepehr.HallowKnight.model.save.SaveData;
 import com.Sepehr.HallowKnight.model.world.GameWorld;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -39,8 +41,21 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
         if (world == null) {
             camera = new OrthographicCamera();
             viewport = new FitViewport(1280, 720, camera);
-            world = new GameWorld("maps/Greenpath Hollow Knight/Hollow GreenPath.tmx");
+
+            int currentSlot = engine.getActiveSlot();
+            SaveData saveData = JsonLoader.loadSlot(currentSlot);
+
+            String mapPath = "maps/Greenpath Hollow Knight/Hollow GreenPath.tmx";
+            if (saveData != null) {
+                mapPath = saveData.currentMapPath;
+            }
+
+            world = new GameWorld(mapPath, saveData);
             hud = new GameHUD();
+
+            if (world.getPlayer() != null) {
+                world.getPlayer().activateZeroGravity(1.5f);
+            }
 
             com.badlogic.gdx.maps.tiled.TiledMap map = world.getMap();
             com.badlogic.gdx.maps.MapProperties prop = map.getProperties();
@@ -51,20 +66,15 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
 
             this.mapWidthPixels = mapWidthInTiles * tileWidth;
             this.mapHeightPixels = mapHeightInTiles * tileHeight;
-            int currentSlot = engine.getActiveSlot();
-            Preferences slotPrefs = Gdx.app.getPreferences("HollowKnightSaveData_Slot_" + currentSlot);
 
-            if (slotPrefs.getBoolean("has_saved_data", false) && world.getPlayer() != null) {
-                float savedX = slotPrefs.getFloat("player_spawn_x");
-                float savedY = slotPrefs.getFloat("player_spawn_y");
 
-                world.getPlayer().getPosition().set(savedX, savedY);
-                world.getPlayer().getVelocity().set(0, 0);
-                world.getPlayer().updateHitbox();
-                world.getPlayer().resetSpawnProtection();
+            if (world.getPlayer() != null) {
+                if (saveData != null) {
+                    world.getPlayer().resetSpawnProtection();
+                }
 
-                float camX = savedX + world.getPlayer().getHitbox().width  / 2f;
-                float camY = savedY + world.getPlayer().getHitbox().height / 2f;
+                float camX = world.getPlayer().getPosition().x + world.getPlayer().getHitbox().width  / 2f;
+                float camY = world.getPlayer().getPosition().y + world.getPlayer().getHitbox().height / 2f;
 
                 float minX = viewport.getWorldWidth()  / 2f;
                 float maxX = mapWidthPixels - viewport.getWorldWidth()  / 2f;
@@ -187,13 +197,7 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
     public void onSaveAndExit() {
         if (world != null && world.getPlayer() != null) {
             int currentSlot = engine.getActiveSlot();
-            Preferences slotPrefs = Gdx.app.getPreferences("HollowKnightSaveData_Slot_" + currentSlot);
-            float xToSave = world.getPlayer().getPosition().x;
-            float yToSave = world.getPlayer().getPosition().y + 50;
-            slotPrefs.putFloat("player_spawn_x", xToSave);
-            slotPrefs.putFloat("player_spawn_y", yToSave);
-            slotPrefs.putBoolean("has_saved_data", true);
-            slotPrefs.flush();
+            world.saveCurrentWorldState(currentSlot);
         }
         this.dispose();
         engine.setScreen(new MainMenu(engine));

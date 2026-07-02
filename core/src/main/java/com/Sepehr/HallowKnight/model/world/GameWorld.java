@@ -5,6 +5,7 @@ import com.Sepehr.HallowKnight.model.entities.Player;
 import com.Sepehr.HallowKnight.model.entities.spells.HowlingWraiths;
 import com.Sepehr.HallowKnight.model.entities.spells.Spell;
 import com.Sepehr.HallowKnight.model.entities.spells.VengefulSpirit;
+import com.Sepehr.HallowKnight.model.save.JsonSaver;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -56,12 +57,14 @@ public class GameWorld {
     private float transitionTimer = 0f;
     private final float FADE_DURATION = 0.8f;
     private String pendingMapPath = "";
+    private String currentMapPath;
     private Texture blackOverlay;
 
     private final Array<Rectangle> activeLasers = new Array<>();
 
-    public GameWorld(String mapPath) {
+    public GameWorld(String mapPath, com.Sepehr.HallowKnight.model.save.SaveData saveData) {
         this.map = new TmxMapLoader().load(mapPath);
+        this.currentMapPath = mapPath;
         this.mapRenderer = new OrthogonalTiledMapRenderer(map);
         spawnEnemies(this.map);
 
@@ -80,6 +83,7 @@ public class GameWorld {
         int mapHeightInTiles = map.getProperties().get("height", Integer.class);
         int tileHeightInPixels = map.getProperties().get("tileheight", Integer.class);
         totalMapHeightPixels = mapHeightInTiles * tileHeightInPixels;
+
         if (map.getLayers().get("player spawn") != null) {
             MapObjects spawnObjects = map.getLayers().get("player spawn").getObjects();
             if(spawnObjects.get("Spawn") != null) {
@@ -88,7 +92,20 @@ public class GameWorld {
                 spawnY = totalMapHeightPixels - spawn.getProperties().get("y" , Float.class);
             }
         }
+
+        // --- JSON SAVE STATE OVERRIDE CONTROL ---
+        if (saveData != null) {
+            spawnX = saveData.playerX;
+            spawnY = saveData.playerY;
+        }
+
         this.player = new Player(spawnX, spawnY , miniAudio);
+
+        if (saveData != null) {
+            this.player.setCurrentMasks(saveData.masks);
+            this.player.setCurrentSoul(saveData.soul);
+        }
+        // ----------------------------------------
 
         backgroundMusic = miniAudio.createSound("audio/Flower Wings.mp3");
         backgroundMusic.setLooping(true);
@@ -410,6 +427,7 @@ public class GameWorld {
         enemiesList.clear();
 
         this.map = new TmxMapLoader().load(newMapPath);
+        this.currentMapPath = newMapPath;
         this.mapRenderer.setMap(this.map);
 
         int mapHeightInTiles = map.getProperties().get("height", Integer.class);
@@ -423,7 +441,7 @@ public class GameWorld {
             if (spawnObjects.get("Spawn") != null) {
                 PointMapObject spawn = (PointMapObject) spawnObjects.get("Spawn");
                 spawnX = spawn.getProperties().get("x", Float.class);
-                spawnY = spawn.getProperties().get("y", Float.class);
+                spawnY = totalMapHeightPixels - spawn.getProperties().get("y", Float.class);
             }
         }
         player.getPosition().set(spawnX, spawnY);
@@ -470,6 +488,17 @@ public class GameWorld {
         backgroundMusic.setLooping(true);
         backgroundMusic.setVolume(0f);
         backgroundMusic.play();
+    }
+
+    public void saveCurrentWorldState(int activeSlotNum) {
+        com.Sepehr.HallowKnight.model.save.JsonSaver.saveSlot(
+            activeSlotNum,
+            player.getCurrentMasks(),
+            player.getCurrentSoul(),
+            this.currentMapPath,
+            player.getPosition().x,
+            player.getPosition().y
+        );
     }
 
     public void render(OrthographicCamera camera, SpriteBatch batch) {

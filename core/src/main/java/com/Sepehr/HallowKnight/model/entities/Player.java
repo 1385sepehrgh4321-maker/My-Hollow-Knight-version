@@ -99,6 +99,8 @@ public class Player extends Entity{
     private boolean isFootstepSoundPlaying = false;
     private boolean hasPlayedDeathSound = false;
 
+    private float zeroGravityTimer = 0f;
+
     public enum State {
         IDLE, RUNNING, AIRBORNE, FALLING, DOUBLE_JUMPING, WALL_SLIDING, DASHING, ATTACKING, HURT, DEATH , CASTING
     }
@@ -253,12 +255,16 @@ public class Player extends Entity{
             velocity.set(0, 0);
         }
         else {
-
-            if ((isWalledLeft || isWalledRight) && velocity.y < 0) {
-                jumpCount = 0;
-                velocity.y += (GRAVITY * 0.35f) * delta;
+            // Check if our zero-gravity power-up is active
+            if (zeroGravityTimer > 0) {
+                zeroGravityTimer -= delta;
             } else {
-                velocity.y += GRAVITY * delta;
+                if ((isWalledLeft || isWalledRight) && velocity.y < 0) {
+                    jumpCount = 0;
+                    velocity.y += (GRAVITY * 0.35f) * delta;
+                } else {
+                    velocity.y += GRAVITY * delta;
+                }
             }
         }
         evaluateStates();
@@ -746,4 +752,21 @@ public class Player extends Entity{
         }
 
     }
+
+    public float getCurrentSoul() { return this.currentSoul; }
+
+    public void setCurrentMasks(int masks) {
+        this.currentMasks = masks;
+        this.health = masks;
+    }
+
+    public void setCurrentSoul(float soul) {
+        this.currentSoul = soul;
+    }
+
+    public void activateZeroGravity(float durationInSeconds) {
+        this.zeroGravityTimer = durationInSeconds;
+        this.isGrounded = false;
+    }
+
 }

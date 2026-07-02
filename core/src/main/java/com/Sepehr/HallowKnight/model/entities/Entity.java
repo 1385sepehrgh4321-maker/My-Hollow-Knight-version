@@ -26,4 +26,6 @@ public abstract class Entity {
     }
 
     public Rectangle getHitbox() { return hitbox; }
+
+    public int getHealth() { return this.health; }
 }

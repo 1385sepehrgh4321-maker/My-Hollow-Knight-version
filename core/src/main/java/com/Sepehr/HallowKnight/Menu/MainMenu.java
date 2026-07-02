@@ -114,11 +114,12 @@ public class MainMenu extends BaseMenu{
         TextButton newGameBtn = new TextButton(bundle.get("btn_new_game"), skin);
         newGameBtn.addListener(new NewGameListener(engine));
         startGameMenuTable.add(newGameBtn).row();
+
         for (int i = 1; i < 5; i++) {
             final int slotIndex = i;
-            com.badlogic.gdx.Preferences slotPrefs = com.badlogic.gdx.Gdx.app.getPreferences("HollowKnightSaveData_Slot_" + slotIndex);
             String slotText = bundle.get("lbl_load_save") + " " + slotIndex;
-            if (slotPrefs.getBoolean("has_saved_data", false)) {
+            String fileName = "hollow_save_slot_" + slotIndex + ".json";
+            if (Gdx.files.local(fileName).exists()) {
                 slotText += " (Saved)";
             }
 
@@ -142,8 +143,7 @@ public class MainMenu extends BaseMenu{
                 mainMenuTable.invalidateHierarchy();
 
                 startGameMenuTable.setTouchable(Touchable.disabled);
-                startGameMenuTable.addAction(Actions.sequence(
-                    Actions.hide()));
+                startGameMenuTable.addAction(Actions.sequence(Actions.hide()));
             }
         });
 
