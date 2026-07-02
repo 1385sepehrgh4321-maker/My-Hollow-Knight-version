@@ -147,12 +147,6 @@ public class Crystallized extends Enemy{
 
             case SHOOT:
                 velocity.set(0, 0);
-
-
-                if (!hasFiredProjectile && animShoot.getKeyFrameIndex(stateTime) == 3) {
-                    hasFiredProjectile = true;
-                    spawnCrystalShardProjectile(player);
-                }
                 actionTimer -= delta;
                 if (actionTimer <= 0) {
                     changeState(State.IDLE);
@@ -163,7 +157,7 @@ public class Crystallized extends Enemy{
                 velocity.x = isFacingRight ? -EVADE_SPEED : EVADE_SPEED;
                 position.x += velocity.x * delta;
 
-                // Constrain evasion boundaries to prevent falling off cliffs
+
                 if (position.x <= leftBound) {
                     position.x = leftBound;
                     changeState(State.TURN);
@@ -267,5 +261,13 @@ public class Crystallized extends Enemy{
         if (atlas != null) {
             atlas.dispose();
         }
+    }
+
+    public boolean isLaserActive() {
+        return currentState == State.SHOOT && animShoot.getKeyFrameIndex(stateTime) >= 3;
+    }
+
+    public boolean isFacingRight() {
+        return this.isFacingRight;
     }
 }

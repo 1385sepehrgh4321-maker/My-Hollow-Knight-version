@@ -8,6 +8,8 @@ import com.Sepehr.HallowKnight.model.entities.spells.VengefulSpirit;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -30,24 +32,33 @@ import java.util.ArrayList;
 
 public class GameWorld {
     private final BitmapFont font;
-    private final TiledMap map;
+    private TiledMap map;
     private final OrthogonalTiledMapRenderer mapRenderer;
     private final Player player;
     private final Array<Rectangle> solidTiles = new Array<>();
     private final Array<Rectangle> hazardTiles = new Array<>();
     private final ArrayList<Enemy> enemiesList = new ArrayList<>();
     private final Array<Spell> activeSpells = new Array<>();
-    private final float totalMapHeightPixels;
+    private float totalMapHeightPixels;
 
     //audio
     private final MiniAudio miniAudio;
-    private final MASound backgroundMusic;
+    private MASound backgroundMusic;
 
     //trigger and spawn
     private Rectangle nextMapPortal = null;
     private String nextMapTargetName = "";
     private boolean shouldTransition = false;
 
+    //transition
+    private enum TransitionState { RUNNING, FADE_OUT, FADE_IN }
+    private TransitionState transitionState = TransitionState.RUNNING;
+    private float transitionTimer = 0f;
+    private final float FADE_DURATION = 0.8f;
+    private String pendingMapPath = "";
+    private Texture blackOverlay;
+
+    private final Array<Rectangle> activeLasers = new Array<>();
 
     public GameWorld(String mapPath) {
         this.map = new TmxMapLoader().load(mapPath);
@@ -112,9 +123,43 @@ public class GameWorld {
                 }
             }
         }
+
+        Pixmap pixmap = new Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.WHITE);
+        pixmap.fill();
+        this.blackOverlay = new Texture(pixmap);
+        pixmap.dispose();
     }
 
     public void update(float delta) {
+        activeLasers.clear();
+
+        if (transitionState == TransitionState.FADE_OUT) {
+            transitionTimer += delta;
+
+            if (backgroundMusic != null) {
+                backgroundMusic.setVolume(Math.max(0f, 0.3f * (1f - (transitionTimer / FADE_DURATION))));
+            }
+
+            if (transitionTimer >= FADE_DURATION) {
+                performMapSwitch(pendingMapPath);
+                transitionState = TransitionState.FADE_IN;
+                transitionTimer = 0f;
+            }
+            return;
+        } else if (transitionState == TransitionState.FADE_IN) {
+            transitionTimer += delta;
+
+            if (backgroundMusic != null) {
+                backgroundMusic.setVolume(Math.min(0.3f, 0.3f * (transitionTimer / FADE_DURATION)));
+            }
+
+            if (transitionTimer >= FADE_DURATION) {
+                transitionState = TransitionState.RUNNING;
+            }
+            return;
+        }
+
         player.update(delta);
         for (int i = enemiesList.size() - 1; i >= 0; i--) {
             Enemy enemy = enemiesList.get(i);
@@ -123,7 +168,48 @@ public class GameWorld {
             else if(enemy instanceof WingedSentry)
                 ((WingedSentry) enemy).updateAI(delta , player);
             else if (enemy instanceof Crystallized) {
-                ((Crystallized) enemy).updateAI(delta , player);
+                Crystallized crystalHusk = (Crystallized) enemy;
+                crystalHusk.updateAI(delta , player);
+                if (crystalHusk.isLaserActive()) {
+                    int additionalX = (crystalHusk.isFacingRight() ? 12 : -12);
+                    float startX = crystalHusk.getPosition().x + (crystalHusk.getHitbox().width / 2f) + additionalX;
+                    float laserY = crystalHusk.getPosition().y + (crystalHusk.getHitbox().height / 2f) + 18f;
+                    float laserThickness = 6f;
+                    float maxRange = 1200f;
+
+                    if (crystalHusk.isFacingRight()) {
+                        float closestWallX = startX + maxRange;
+                        for (Rectangle wall : solidTiles) {
+                            if (wall.y <= laserY && (wall.y + wall.height) >= laserY) {
+                                if (wall.x > startX && wall.x < closestWallX) {
+                                    closestWallX = wall.x;
+                                }
+                            }
+                        }
+                        Rectangle beam = new Rectangle(startX, laserY - (laserThickness / 2f), closestWallX - startX, laserThickness);
+                        activeLasers.add(beam);
+
+                        if (player.getHitbox().overlaps(beam)) {
+                            player.takeDamage(1, false);
+                        }
+                    } else {
+                        float closestWallX = startX - maxRange;
+                        for (Rectangle wall : solidTiles) {
+                            if (wall.y <= laserY && (wall.y + wall.height) >= laserY) {
+                                float wallRightEdge = wall.x + wall.width;
+                                if (wallRightEdge < startX && wallRightEdge > closestWallX) {
+                                    closestWallX = wallRightEdge;
+                                }
+                            }
+                        }
+                        Rectangle beam = new Rectangle(closestWallX, laserY - (laserThickness / 2f), startX - closestWallX, laserThickness);
+                        activeLasers.add(beam);
+
+                        if (player.getHitbox().overlaps(beam)) {
+                            player.takeDamage(1, true);
+                        }
+                    }
+                }
             }
             else if(enemy instanceof FalseKnight) {
                 ((FalseKnight) enemy).updateAI(delta , player);
@@ -186,7 +272,12 @@ public class GameWorld {
         if (nextMapPortal != null && player.getHitbox().overlaps(nextMapPortal)) {
             if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.W) ||
                 Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.UP)) {
-                this.shouldTransition = true;
+
+                if (transitionState == TransitionState.RUNNING) {
+                    this.transitionState = TransitionState.FADE_OUT;
+                    this.transitionTimer = 0f;
+                    this.pendingMapPath = nextMapTargetName;
+                }
             }
         }
     }
@@ -307,6 +398,80 @@ public class GameWorld {
         }
     }
 
+    private void performMapSwitch(String newMapPath) {
+        if (this.map != null) this.map.dispose();
+        solidTiles.clear();
+        hazardTiles.clear();
+        activeSpells.clear();
+
+        for (Enemy enemy : enemiesList) {
+            enemy.dispose();
+        }
+        enemiesList.clear();
+
+        this.map = new TmxMapLoader().load(newMapPath);
+        this.mapRenderer.setMap(this.map);
+
+        int mapHeightInTiles = map.getProperties().get("height", Integer.class);
+        int tileHeightInPixels = map.getProperties().get("tileheight", Integer.class);
+        totalMapHeightPixels = mapHeightInTiles * tileHeightInPixels;
+
+        float spawnX = 100;
+        float spawnY = 100;
+        if (map.getLayers().get("player spawn") != null) {
+            MapObjects spawnObjects = map.getLayers().get("player spawn").getObjects();
+            if (spawnObjects.get("Spawn") != null) {
+                PointMapObject spawn = (PointMapObject) spawnObjects.get("Spawn");
+                spawnX = spawn.getProperties().get("x", Float.class);
+                spawnY = spawn.getProperties().get("y", Float.class);
+            }
+        }
+        player.getPosition().set(spawnX, spawnY);
+        player.getVelocity().set(0, 0);
+        player.updateHitbox();
+
+        spawnEnemies(this.map);
+
+        this.nextMapPortal = null;
+        this.nextMapTargetName = "";
+        if (map.getLayers().get("trigger") != null) {
+            MapObjects triggerObjects = map.getLayers().get("trigger").getObjects();
+            for (MapObject object : triggerObjects) {
+                if ("next map portal".equals(object.getName()) && object instanceof RectangleMapObject) {
+                    this.nextMapPortal = ((RectangleMapObject) object).getRectangle();
+                    if (object.getProperties().containsKey("nextMap"))
+                        this.nextMapTargetName = object.getProperties().get("nextMap", String.class);
+                }
+            }
+        }
+
+        MapObjects objects = map.getLayers().get("wall").getObjects();
+        for (MapObject object : objects) {
+            if (object instanceof RectangleMapObject) {
+                Rectangle rect = ((RectangleMapObject) object).getRectangle();
+                if (object.getProperties().containsKey("killing") &&
+                    object.getProperties().get("killing", Boolean.class).equals(true)) {
+                    hazardTiles.add(rect);
+                } else {
+                    solidTiles.add(rect);
+                }
+            }
+        }
+
+        if (backgroundMusic != null) backgroundMusic.dispose();
+
+
+        String musicTrack = "audio/Flower Wings.mp3";
+        if (newMapPath.toLowerCase().contains("city of tears")) {
+            musicTrack = "audio/City of Tears.mp3";
+        }
+
+        backgroundMusic = miniAudio.createSound(musicTrack);
+        backgroundMusic.setLooping(true);
+        backgroundMusic.setVolume(0f);
+        backgroundMusic.play();
+    }
+
     public void render(OrthographicCamera camera, SpriteBatch batch) {
         com.badlogic.gdx.utils.ScreenUtils.clear(0, 0, 0, 1);
 
@@ -324,16 +489,45 @@ public class GameWorld {
             spell.draw(batch);
         }
 
+        batch.setColor(1f, 0.25f, 0.65f, 0.95f);
+        for (Rectangle beam : activeLasers) {
+            batch.draw(blackOverlay, beam.x, beam.y, beam.width, beam.height);
+        }
+        batch.setColor(Color.WHITE);
+
         player.draw(batch);
         if (isPlayerInPortal()) {
             float textX = player.getPosition().x - 40;
             float textY = player.getPosition().y + player.getHitbox().height + 40;
             font.draw(batch, "[W] Enter", textX, textY);
         }
+
+        if (transitionState != TransitionState.RUNNING) {
+            float alpha = 0f;
+            if (transitionState == TransitionState.FADE_OUT) {
+                alpha = Math.min(1f, transitionTimer / FADE_DURATION);
+            } else if (transitionState == TransitionState.FADE_IN) {
+                alpha = Math.max(0f, 1f - (transitionTimer / FADE_DURATION));
+            }
+
+            batch.setColor(0f, 0f, 0f, alpha);
+            batch.draw(
+                blackOverlay,
+                camera.position.x - camera.viewportWidth / 2f,
+                camera.position.y - camera.viewportHeight / 2f,
+                camera.viewportWidth,
+                camera.viewportHeight
+            );
+            batch.setColor(Color.WHITE);
+        }
         batch.end();
     }
 
     public void dispose() {
+        if (mapRenderer != null)
+            mapRenderer.dispose();
+        if (blackOverlay != null)
+            blackOverlay.dispose();
         if(player != null)
             player.dispose();
         if(map != null)
