@@ -1,5 +1,6 @@
 package com.Sepehr.HallowKnight.model.world;
 
+import com.Sepehr.HallowKnight.model.entities.Zote;
 import com.Sepehr.HallowKnight.model.entities.enemies.*;
 import com.Sepehr.HallowKnight.model.entities.Player;
 import com.Sepehr.HallowKnight.model.entities.spells.HowlingWraiths;
@@ -41,6 +42,8 @@ public class GameWorld {
     private final ArrayList<Enemy> enemiesList = new ArrayList<>();
     private final Array<Spell> activeSpells = new Array<>();
     private float totalMapHeightPixels;
+
+    private Zote zote = null;
 
     //audio
     private final MiniAudio miniAudio;
@@ -149,6 +152,7 @@ public class GameWorld {
     }
 
     public void update(float delta) {
+        checkCheatInputs();
         activeLasers.clear();
 
         if (transitionState == TransitionState.FADE_OUT) {
@@ -178,6 +182,14 @@ public class GameWorld {
         }
 
         player.update(delta);
+
+        if (zote != null && zote.isInConversation()) {
+            player.getVelocity().set(0, 0);
+        }
+        if (zote != null) {
+            zote.updateZote(delta, player, solidTiles);
+        }
+
         for (int i = enemiesList.size() - 1; i >= 0; i--) {
             Enemy enemy = enemiesList.get(i);
             if(enemy instanceof HushHornhead)
@@ -207,7 +219,9 @@ public class GameWorld {
                         activeLasers.add(beam);
 
                         if (player.getHitbox().overlaps(beam)) {
-                            player.takeDamage(1, false);
+                            if (!player.isCheatGodModeActive() && !player.isCheatNoclipActive()) {
+                                player.takeDamage(1, false);
+                            }
                         }
                     } else {
                         float closestWallX = startX - maxRange;
@@ -223,7 +237,9 @@ public class GameWorld {
                         activeLasers.add(beam);
 
                         if (player.getHitbox().overlaps(beam)) {
-                            player.takeDamage(1, true);
+                            if (!player.isCheatGodModeActive() && !player.isCheatNoclipActive()) { // <-- ENFORCED PROTECTION
+                                player.takeDamage(1, true);
+                            }
                         }
                     }
                 }
@@ -242,6 +258,44 @@ public class GameWorld {
         checkPlayerAttacks();
         handlePlayerSpells(delta);
         checkMapTransitions();
+    }
+
+    private void checkCheatInputs() {
+        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.CONTROL_LEFT)) {
+
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_1)) {
+                if (this.transitionState == TransitionState.RUNNING) {
+                    this.transitionState = TransitionState.FADE_OUT;
+                    this.transitionTimer = 0f;
+                    this.pendingMapPath = "maps/False Knight.tmx";
+                }
+            }
+
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_2)) {
+                player.setCheatNoclip(!player.isCheatNoclipActive());
+            }
+
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_3)) {
+                player.setCurrentMasks(player.getMaxMasks());
+            }
+
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_4)) {
+                player.setCurrentSoul(100f);
+            }
+
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_5)) {
+                player.setCheatGodMode(!player.isCheatGodModeActive());
+            }
+
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.NUM_6)) {
+                for (Enemy enemy : enemiesList) {
+                    if (enemy.getHealth() > 0) {
+                        boolean hitFromLeft = player.getPosition().x < enemy.getPosition().x;
+                        enemy.takeDamage(999, hitFromLeft);
+                    }
+                }
+            }
+        }
     }
 
     public void spawnEnemies(TiledMap map) {
@@ -280,6 +334,10 @@ public class GameWorld {
                     FalseKnight falseKnight = new FalseKnight("falseknight" , spawnX , spawnY , leftBound , rightBound , "New folder/Falseknight.atlas" , 50);
                     enemiesList.add(falseKnight);
                 }
+                else if(object.getName() != null && object.getName().equalsIgnoreCase("zote")) {
+                    this.zote = new Zote(spawnX , spawnY , "New folder/Zote.atlas" , miniAudio);
+                    System.out.println("hello there");
+                }
             }
         }
     }
@@ -299,6 +357,18 @@ public class GameWorld {
     }
 
     private void handleCollisions(float delta) {
+        if (player.isCheatNoclipActive()) {
+            Vector2 pos = player.getPosition();
+            Vector2 vel = player.getVelocity();
+
+            pos.x += vel.x * delta;
+            pos.y += vel.y * delta;
+
+            player.updateHitbox();
+            player.setGrounded(false);
+            player.setWallStates(false, false);
+            return;
+        }
         boolean touchingWallLeft = false;
         boolean touchingWallRight = false;
         Vector2 pos = player.getPosition();
@@ -513,6 +583,11 @@ public class GameWorld {
             enemy.draw(batch);
         }
 
+        if (zote != null) {
+            zote.draw(batch);
+            zote.drawDialogue(batch, camera);
+        }
+
         for (Spell spell : activeSpells) {
             spell.draw(batch);
         }
@@ -524,6 +599,11 @@ public class GameWorld {
         batch.setColor(Color.WHITE);
 
         player.draw(batch);
+        if (zote != null && zote.isPlayerNearby(player) && !zote.isInConversation()) {
+            float textX = player.getPosition().x - 40f;
+            float textY = player.getPosition().y + player.getHitbox().height + 40f;
+            font.draw(batch, "[E] Talk", textX, textY);
+        }
         if (isPlayerInPortal()) {
             float textX = player.getPosition().x - 40;
             float textY = player.getPosition().y + player.getHitbox().height + 40;

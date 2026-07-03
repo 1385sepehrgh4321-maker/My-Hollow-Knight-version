@@ -99,6 +99,9 @@ public class Player extends Entity{
     private boolean isFootstepSoundPlaying = false;
     private boolean hasPlayedDeathSound = false;
 
+    private boolean cheatGodMode = false;
+    private boolean cheatNoclip = false;
+
     private float zeroGravityTimer = 0f;
 
     public enum State {
@@ -258,7 +261,7 @@ public class Player extends Entity{
             // Check if our zero-gravity power-up is active
             if (zeroGravityTimer > 0) {
                 zeroGravityTimer -= delta;
-            } else {
+            }else {
                 if ((isWalledLeft || isWalledRight) && velocity.y < 0) {
                     jumpCount = 0;
                     velocity.y += (GRAVITY * 0.35f) * delta;
@@ -303,6 +306,16 @@ public class Player extends Entity{
     }
 
     private void handleInput() {
+        if (cheatNoclip) {
+            velocity.set(0, 0);
+            float noclipSpeed = MOVE_SPEED * 1.8f;
+            if (Gdx.input.isKeyPressed(keyLeft))  { velocity.x = -noclipSpeed; isFacingRight = false; }
+            if (Gdx.input.isKeyPressed(keyRight)) { velocity.x = noclipSpeed;  isFacingRight = true; }
+            if (Gdx.input.isKeyPressed(keyUp))    velocity.y = noclipSpeed;
+            if (Gdx.input.isKeyPressed(keyDown))  velocity.y = -noclipSpeed;
+            currentState = State.IDLE;
+            return;
+        }
         if(knockbackTimer <= 0) {
             // X-Axis Kinematics Logic
             velocity.x = 0;
@@ -427,7 +440,7 @@ public class Player extends Entity{
     }
 
     public void takeHazardDamage(int damage) {
-        if (invulnerabilityTimer > 0 || health <= 0) return;
+        if (cheatGodMode || invulnerabilityTimer > 0 || health <= 0) return;
 
         this.health -= damage;
         loseMask(damage);
@@ -557,7 +570,7 @@ public class Player extends Entity{
     }
 
     public void takeDamage(int amount, boolean knockLeft) {
-        if (invulnerabilityTimer > 0 || spawnProtectionTimer > 0 || health <= 0) return;
+        if (cheatGodMode || invulnerabilityTimer > 0 || health <= 0) return;
 
         this.health -= amount;
         loseMask(1);
@@ -770,5 +783,16 @@ public class Player extends Entity{
     }
 
     public HashSet<CharmType> getEquippedCharms() { return this.equippedCharms; }
+
+    public void setCheatGodMode(boolean active) { this.cheatGodMode = active; }
+
+    public boolean isCheatGodModeActive() { return this.cheatGodMode; }
+
+    public void setCheatNoclip(boolean active) {
+        this.cheatNoclip = active;
+        if (active) this.velocity.set(0, 0);
+    }
+
+    public boolean isCheatNoclipActive() { return this.cheatNoclip; }
 
 }
