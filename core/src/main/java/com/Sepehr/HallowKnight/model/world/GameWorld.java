@@ -6,7 +6,6 @@ import com.Sepehr.HallowKnight.model.entities.Player;
 import com.Sepehr.HallowKnight.model.entities.spells.HowlingWraiths;
 import com.Sepehr.HallowKnight.model.entities.spells.Spell;
 import com.Sepehr.HallowKnight.model.entities.spells.VengefulSpirit;
-import com.Sepehr.HallowKnight.model.save.JsonSaver;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -42,19 +41,17 @@ public class GameWorld {
     private final ArrayList<Enemy> enemiesList = new ArrayList<>();
     private final Array<Spell> activeSpells = new Array<>();
     private float totalMapHeightPixels;
+    private float totalMapWidthPixels;
 
     private Zote zote = null;
 
-    //audio
     private final MiniAudio miniAudio;
     private MASound backgroundMusic;
 
-    //trigger and spawn
     private Rectangle nextMapPortal = null;
     private String nextMapTargetName = "";
     private boolean shouldTransition = false;
 
-    //transition
     private enum TransitionState { RUNNING, FADE_OUT, FADE_IN }
     private TransitionState transitionState = TransitionState.RUNNING;
     private float transitionTimer = 0f;
@@ -65,7 +62,8 @@ public class GameWorld {
 
     private final Array<Rectangle> activeLasers = new Array<>();
 
-    public GameWorld(String mapPath, com.Sepehr.HallowKnight.model.save.SaveData saveData) {
+    public GameWorld(MiniAudio miniAudio, String mapPath, com.Sepehr.HallowKnight.model.save.SaveData saveData) {
+        this.miniAudio = miniAudio;
         this.map = new TmxMapLoader().load(mapPath);
         this.currentMapPath = mapPath;
         this.mapRenderer = new OrthogonalTiledMapRenderer(map);
@@ -80,12 +78,14 @@ public class GameWorld {
         this.font = generator.generateFont(parameter);
         generator.dispose();
 
-        this.miniAudio = new MiniAudio();
         float spawnX = 100;
         float spawnY = 100;
         int mapHeightInTiles = map.getProperties().get("height", Integer.class);
+        int mapWidthInTiles = map.getProperties().get("width", Integer.class);
         int tileHeightInPixels = map.getProperties().get("tileheight", Integer.class);
+        int tileWidthInPixels = map.getProperties().get("tilewidth", Integer.class);
         totalMapHeightPixels = mapHeightInTiles * tileHeightInPixels;
+        totalMapWidthPixels = mapWidthInTiles * tileWidthInPixels;
 
         if (map.getLayers().get("player spawn") != null) {
             MapObjects spawnObjects = map.getLayers().get("player spawn").getObjects();
@@ -96,19 +96,17 @@ public class GameWorld {
             }
         }
 
-        // --- JSON SAVE STATE OVERRIDE CONTROL ---
         if (saveData != null) {
             spawnX = saveData.playerX;
             spawnY = saveData.playerY;
         }
 
-        this.player = new Player(spawnX, spawnY , miniAudio);
+        this.player = new Player(spawnX, spawnY, miniAudio);
 
         if (saveData != null) {
             this.player.setCurrentMasks(saveData.masks);
             this.player.setCurrentSoul(saveData.soul);
         }
-        // ----------------------------------------
 
         backgroundMusic = miniAudio.createSound("audio/Flower Wings.mp3");
         backgroundMusic.setLooping(true);
@@ -120,8 +118,6 @@ public class GameWorld {
             for (MapObject object : triggerObjects) {
                 if ("next map portal".equals(object.getName()) && object instanceof RectangleMapObject) {
                     this.nextMapPortal = ((RectangleMapObject) object).getRectangle();
-                    float portalX = object.getProperties().get("x", Float.class);
-                    float portalY = object.getProperties().get("y", Float.class);
                     if (object.getProperties().containsKey("nextMap")) {
                         this.nextMapTargetName = object.getProperties().get("nextMap", String.class);
                     } else {
@@ -237,7 +233,7 @@ public class GameWorld {
                         activeLasers.add(beam);
 
                         if (player.getHitbox().overlaps(beam)) {
-                            if (!player.isCheatGodModeActive() && !player.isCheatNoclipActive()) { // <-- ENFORCED PROTECTION
+                            if (!player.isCheatGodModeActive() && !player.isCheatNoclipActive()) {
                                 player.takeDamage(1, true);
                             }
                         }
@@ -299,7 +295,6 @@ public class GameWorld {
     }
 
     public void spawnEnemies(TiledMap map) {
-
         MapLayer enemyLayer = map.getLayers().get("enemy spawn");
         if (enemyLayer == null) {
             return;
@@ -311,10 +306,9 @@ public class GameWorld {
                 float leftBound = rect.x;
                 float rightBound = rect.x + rect.width;
                 float spawnX = rect.x + (rect.width / 2f);
-
                 float spawnY = rect.y ;
-                if (object.getName() != null && object.getName().equalsIgnoreCase("mosscreep")) {
 
+                if (object.getName() != null && object.getName().equalsIgnoreCase("mosscreep")) {
                     Mosscreep mosscreep = new Mosscreep("mosscreep" , spawnX, spawnY, leftBound, rightBound , "New folder/Mosscreep.atlas");
                     enemiesList.add(mosscreep);
                 }
@@ -336,7 +330,6 @@ public class GameWorld {
                 }
                 else if(object.getName() != null && object.getName().equalsIgnoreCase("zote")) {
                     this.zote = new Zote(spawnX , spawnY , "New folder/Zote.atlas" , miniAudio);
-                    System.out.println("hello there");
                 }
             }
         }
@@ -420,12 +413,9 @@ public class GameWorld {
 
         for (Enemy enemy : enemiesList) {
             if (enemy.getHealth() > 0 && player.getHitbox().overlaps(enemy.getHitbox())) {
-
                 boolean knockLeft = player.getPosition().x < enemy.getPosition().x;
-
                 player.takeDamage(1, knockLeft);
                 enemy.onPlayerHit();
-
                 break;
             }
         }
@@ -450,7 +440,6 @@ public class GameWorld {
         if (pendingSpell == Player.SpellType.VENGEFUL_SPIRIT) {
             float spawnX = player.isFacingRight() ? (player.getPosition().x + player.getHitbox().width) : (player.getPosition().x - 40f);
             float spawnY = player.getPosition().y + (player.getHitbox().height / 3f);
-
             activeSpells.add(new VengefulSpirit(spawnX, spawnY, player.isFacingRight(), new TextureAtlas(Gdx.files.internal("New folder/Shadowball.atlas")), miniAudio));
         }
         else if (pendingSpell == Player.SpellType.HOWLING_WRAITHS) {
@@ -500,19 +489,25 @@ public class GameWorld {
         this.mapRenderer.setMap(this.map);
 
         int mapHeightInTiles = map.getProperties().get("height", Integer.class);
+        int mapWidthInTiles = map.getProperties().get("width", Integer.class);
         int tileHeightInPixels = map.getProperties().get("tileheight", Integer.class);
+        int tileWidthInPixels = map.getProperties().get("tilewidth", Integer.class);
         totalMapHeightPixels = mapHeightInTiles * tileHeightInPixels;
+        totalMapWidthPixels = mapWidthInTiles * tileWidthInPixels;
 
         float spawnX = 100;
         float spawnY = 100;
         if (map.getLayers().get("player spawn") != null) {
+            System.out.println("hello");
             MapObjects spawnObjects = map.getLayers().get("player spawn").getObjects();
             if (spawnObjects.get("Spawn") != null) {
                 PointMapObject spawn = (PointMapObject) spawnObjects.get("Spawn");
                 spawnX = spawn.getProperties().get("x", Float.class);
-                spawnY = totalMapHeightPixels - spawn.getProperties().get("y", Float.class);
+                spawnY = spawn.getProperties().get("y", Float.class);
             }
         }
+        player.activateZeroGravity(1.5f);
+        player.resetSpawnProtection();
         player.getPosition().set(spawnX, spawnY);
         player.getVelocity().set(0, 0);
         player.updateHitbox();
@@ -547,10 +542,12 @@ public class GameWorld {
 
         if (backgroundMusic != null) backgroundMusic.dispose();
 
-
         String musicTrack = "audio/Flower Wings.mp3";
         if (newMapPath.toLowerCase().contains("city of tears")) {
             musicTrack = "audio/City of Tears.mp3";
+        }
+        if (newMapPath.toLowerCase().contains("boss")) {
+            musicTrack = "audio/boss.mp3";
         }
 
         backgroundMusic = miniAudio.createSound(musicTrack);
@@ -642,8 +639,6 @@ public class GameWorld {
             map.dispose();
         if (backgroundMusic != null)
             backgroundMusic.dispose();
-        if (miniAudio != null)
-            miniAudio.dispose();
         for (Enemy enemy : enemiesList) {
             enemy.dispose();
         }

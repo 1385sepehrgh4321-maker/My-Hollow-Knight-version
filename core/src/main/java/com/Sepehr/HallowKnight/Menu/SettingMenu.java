@@ -37,6 +37,7 @@ public class SettingMenu extends BaseMenu{
         editControllers.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 engine.setScreen(new ControllersMenu(engine , SettingMenu.this));
             }
         });
@@ -46,6 +47,7 @@ public class SettingMenu extends BaseMenu{
         muteCheckBox.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 boolean checked = muteCheckBox.isChecked();
                 prefs.putBoolean("muted", checked);
                 prefs.flush();
@@ -81,6 +83,7 @@ public class SettingMenu extends BaseMenu{
         resetSfx.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 prefs.putFloat("volume" , 0.7f);
                 prefs.putBoolean("muted" , false);
                 prefs.flush();

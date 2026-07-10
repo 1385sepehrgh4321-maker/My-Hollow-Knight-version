@@ -16,7 +16,7 @@ import com.badlogic.gdx.math.Vector2;
 import games.rednblack.miniaudio.MiniAudio;
 import java.util.HashSet;
 
-public class Player extends Entity{
+public class Player extends Entity {
     private Texture placeholderTexture;
     private float MOVE_SPEED = 300f;
     private float DASH_SPEED = 600f;
@@ -48,24 +48,40 @@ public class Player extends Entity{
     private boolean isWalledLeft = false;
     private boolean isWalledRight = false;
     private Vector2 lastSafePosition;
-    //attack
+
+    // Attack properties
     private boolean isAttacking = false;
     private float attackTimer = 0f;
     private float attackCooldownTimer = 0f;
     private float ATTACK_DURATION = 0.25f;
     private int attackDirection = 0;
     private boolean hasHitThisAttack = false;
-    // dash
+
+    // --- VISUAL SLASH EFFECT FIELDS ---
+    private Texture texSlashSide;
+    private Texture texSlashDown;
+    private Animation<TextureRegion> effectSlashSide;
+    private Animation<TextureRegion> effectSlashDown;
+    private float slashEffectTime = 0f;
+    private boolean renderSlashEffect = false;
+    private int slashEffectDirection = 0;
+    private boolean slashEffectFacingRight = true;
+    private final Vector2 slashEffectSpawnPos = new Vector2();
+    // ----------------------------------
+
+    // Dash properties
     private boolean isDashing = false;
     private float dashTimer = 0f;
     private float dashCooldownTimer = 0f;
     private float dashDirectionX = 0f;
     private boolean hasDashedInAir = false;
-    //jump
+
+    // Jump properties
     private boolean isJumping = false;
     private float jumpTimer = 0f;
     private int jumpCount = 0;
-    //animations
+
+    // Animations
     private TextureAtlas atlas;
     private Animation<TextureRegion> animIdle;
     private Animation<TextureRegion> animRun;
@@ -83,7 +99,7 @@ public class Player extends Entity{
     private Animation<TextureRegion> animScreamCast;
     private Animation<TextureRegion> animFocus;
 
-    //audio
+    // Audio
     private games.rednblack.miniaudio.MiniAudio miniAudio;
     private games.rednblack.miniaudio.MASound soundJump;
     private games.rednblack.miniaudio.MASound soundDoubleJump;
@@ -94,7 +110,6 @@ public class Player extends Entity{
     private games.rednblack.miniaudio.MASound soundDeath;
     private games.rednblack.miniaudio.MASound soundHurt;
     private games.rednblack.miniaudio.MASound soundAttack;
-
     private boolean isWallSlideSoundPlaying = false;
     private boolean isFootstepSoundPlaying = false;
     private boolean hasPlayedDeathSound = false;
@@ -103,25 +118,19 @@ public class Player extends Entity{
     private boolean cheatNoclip = false;
 
     private float zeroGravityTimer = 0f;
-
     public enum State {
         IDLE, RUNNING, AIRBORNE, FALLING, DOUBLE_JUMPING, WALL_SLIDING, DASHING, ATTACKING, HURT, DEATH , CASTING
     }
     private State currentState = State.IDLE;
     private State previousState = State.IDLE;
     private float stateTime = 0f;
-
-    //controllers
     private int keyLeft, keyRight, keyJump, keyDash, keyAttack, keyUp, keyFocusHeal , keyDown , keySpellVengefulSpirit , keySpellHowlingWraiths;
+    private final HashSet<CharmType> equippedCharms = new HashSet<>();
 
-    //spells
     public enum SpellType { NONE, VENGEFUL_SPIRIT, HOWLING_WRAITHS , HEAL }
     private SpellType activeCastType = SpellType.NONE;
     private float castAnimationLockTimer = 0f;
     private SpellType spellSpawningBuffer = SpellType.NONE;
-
-    //charms
-    private final HashSet<CharmType> equippedCharms = new HashSet<>();
 
     public Player(float x, float y , MiniAudio miniAudio) {
         startPos = new Vector2(x , y);
@@ -130,7 +139,6 @@ public class Player extends Entity{
         loadKeyBindings();
         this.health = maxHealth;
         this.lastSafePosition = new Vector2(x, y);
-
         this.atlas = new TextureAtlas(Gdx.files.internal("New folder/knight"));
 
         animIdle        = new Animation<>(0.12f, atlas.findRegions("Idle"), Animation.PlayMode.LOOP);
@@ -149,6 +157,18 @@ public class Player extends Entity{
         animScreamCast   = new Animation<>(0.06f, atlas.findRegions("Scream"), Animation.PlayMode.NORMAL);
         animFocus        = new Animation<>(0.08f, atlas.findRegions("Focus"), Animation.PlayMode.LOOP);
 
+        // --- LOAD AND SPLIT STRIP GRAPHICS FIXED ---
+        this.texSlashSide = new Texture(Gdx.files.internal("sprites/Hollow Knight/Slash/SlashEffectAlt.png"));
+        TextureRegion[][] splitSide = TextureRegion.split(texSlashSide, texSlashSide.getWidth() / 5, texSlashSide.getHeight());
+        this.effectSlashSide = new Animation<>(0.035f, splitSide[0]);
+        this.effectSlashSide.setPlayMode(Animation.PlayMode.NORMAL);
+
+        this.texSlashDown = new Texture(Gdx.files.internal("sprites/Hollow Knight/Slash/DownSlashEffect.png"));
+        TextureRegion[][] splitDown = TextureRegion.split(texSlashDown, texSlashDown.getWidth() / 5, texSlashDown.getHeight());
+        this.effectSlashDown = new Animation<>(0.035f, splitDown[0]);
+        this.effectSlashDown.setPlayMode(Animation.PlayMode.NORMAL);
+        // -------------------------------------------
+
         soundJump       = miniAudio.createSound("audio/hero_jump.wav");
         soundDoubleJump = miniAudio.createSound("audio/hero_wings.wav");
         soundWallJump   = miniAudio.createSound("audio/hero_wall_jump.wav");
@@ -160,7 +180,7 @@ public class Player extends Entity{
         soundAttack = miniAudio.createSound("audio/hero_double_damage.wav");
         soundFootsteps.setLooping(true);
         soundWallSlide.setLooping(true);
-        //will be deleted in the future
+
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.WHITE);
         pixmap.fill();
@@ -185,12 +205,18 @@ public class Player extends Entity{
     @Override
     public void update(float delta) {
         stateTime += delta;
-
+        // Progress visual effect timeline
+        if (renderSlashEffect) {
+            slashEffectTime += delta;
+            Animation<TextureRegion> activeAnim = (slashEffectDirection == 2) ? effectSlashDown : effectSlashSide;
+            if (activeAnim.isAnimationFinished(slashEffectTime)) {
+                renderSlashEffect = false;
+            }
+        }
 
         if (invulnerabilityTimer > 0) invulnerabilityTimer -= delta;
         if (dashCooldownTimer > 0) dashCooldownTimer -= delta;
         if (attackCooldownTimer > 0) attackCooldownTimer -= delta;
-
         if (knockbackTimer > 0) {
             knockbackTimer -= delta;
             velocity.x *= 0.92;
@@ -258,10 +284,9 @@ public class Player extends Entity{
             velocity.set(0, 0);
         }
         else {
-            // Check if our zero-gravity power-up is active
             if (zeroGravityTimer > 0) {
                 zeroGravityTimer -= delta;
-            }else {
+            } else {
                 if ((isWalledLeft || isWalledRight) && velocity.y < 0) {
                     jumpCount = 0;
                     velocity.y += (GRAVITY * 0.35f) * delta;
@@ -296,13 +321,6 @@ public class Player extends Entity{
                 isFootstepSoundPlaying = false;
             }
         }
-        if (currentState == State.DEATH) {
-            if (!hasPlayedDeathSound) {
-                soundDeath.setVolume(0.7f);
-                soundDeath.play();
-                hasPlayedDeathSound = true;
-            }
-        }
     }
 
     private void handleInput() {
@@ -310,14 +328,13 @@ public class Player extends Entity{
             velocity.set(0, 0);
             float noclipSpeed = MOVE_SPEED * 1.8f;
             if (Gdx.input.isKeyPressed(keyLeft))  { velocity.x = -noclipSpeed; isFacingRight = false; }
-            if (Gdx.input.isKeyPressed(keyRight)) { velocity.x = noclipSpeed;  isFacingRight = true; }
+            if (Gdx.input.isKeyPressed(keyRight)) { velocity.x = noclipSpeed; isFacingRight = true; }
             if (Gdx.input.isKeyPressed(keyUp))    velocity.y = noclipSpeed;
             if (Gdx.input.isKeyPressed(keyDown))  velocity.y = -noclipSpeed;
             currentState = State.IDLE;
             return;
         }
         if(knockbackTimer <= 0) {
-            // X-Axis Kinematics Logic
             velocity.x = 0;
             if (Gdx.input.isKeyPressed(keyLeft)) {
                 velocity.x = -MOVE_SPEED;
@@ -327,7 +344,6 @@ public class Player extends Entity{
                 velocity.x = MOVE_SPEED;
                 isFacingRight = true;
             }
-            // Dash Trigger Core
             if (Gdx.input.isKeyJustPressed(keyDash) && dashCooldownTimer <= 0) {
                 isDashing = true;
                 dashTimer = DASH_DURATION;
@@ -337,7 +353,6 @@ public class Player extends Entity{
                 soundDash.play();
                 return;
             }
-            // Jump Mechanics Mapping
             if (Gdx.input.isKeyJustPressed(keyJump)) {
                 if (isGrounded) {
                     velocity.y = JUMP_VELOCITY;
@@ -347,8 +362,8 @@ public class Player extends Entity{
                     soundJump.play();
                 } else if ((isWalledLeft || isWalledRight) && !isGrounded) {
                     velocity.y = JUMP_VELOCITY * 0.9f;
-               velocity.x = isWalledLeft ? MOVE_SPEED : -MOVE_SPEED;
-               isFacingRight = isWalledLeft;
+                    velocity.x = isWalledLeft ? MOVE_SPEED : -MOVE_SPEED;
+                    isFacingRight = isWalledLeft;
                     jumpCount = 1;
                     soundWallJump.setVolume(0.6f);
                     soundWallJump.play();
@@ -361,7 +376,8 @@ public class Player extends Entity{
                     soundDoubleJump.play();
                 }
             }
-            // Attack Mechanics Mapping
+
+            // --- UPDATED ATTACK TRIGGER HOOK ---
             if (Gdx.input.isKeyJustPressed(keyAttack) && !isAttacking && attackCooldownTimer <= 0) {
                 isAttacking = true;
                 attackTimer = ATTACK_DURATION;
@@ -373,13 +389,21 @@ public class Player extends Entity{
                     soundAttack.setVolume(0.5f);
                     soundAttack.play();
                 }
+
                 if (Gdx.input.isKeyPressed(keyUp)) {
-                    attackDirection = 1; // Upward Slash
+                    attackDirection = 1;
                 } else if (Gdx.input.isKeyPressed(keyDown) && !isGrounded) {
-                    attackDirection = 2; // Downward Pogo Slash
+                    attackDirection = 2;
                 } else {
-                    attackDirection = 0; // Neutral Facing Slash
+                    attackDirection = 0;
                 }
+
+                // Snap stationary origin location for effect rendering loop
+                this.renderSlashEffect = true;
+                this.slashEffectTime = 0f;
+                this.slashEffectDirection = attackDirection;
+                this.slashEffectFacingRight = isFacingRight;
+                this.slashEffectSpawnPos.set(position.x, position.y);
             }
 
             if (Gdx.input.isKeyJustPressed(keySpellVengefulSpirit) && activeCastType == SpellType.NONE && !isDashing && !isAttacking) {
@@ -441,7 +465,6 @@ public class Player extends Entity{
 
     public void takeHazardDamage(int damage) {
         if (cheatGodMode || invulnerabilityTimer > 0 || health <= 0) return;
-
         this.health -= damage;
         loseMask(damage);
 
@@ -470,6 +493,7 @@ public class Player extends Entity{
         this.velocity.set(0, 0);
         this.isDashing = false;
         this.isAttacking = false;
+        this.renderSlashEffect = false;
 
         this.currentState = State.IDLE;
         this.stateTime = 0f;
@@ -489,7 +513,6 @@ public class Player extends Entity{
     @Override
     public void draw(SpriteBatch batch) {
         batch.setColor(Color.WHITE);
-
         if (invulnerabilityTimer > 0 && (int)(invulnerabilityTimer * 12) % 2 == 0) {
             batch.setColor(Color.RED);
         }
@@ -504,8 +527,7 @@ public class Player extends Entity{
                     currentFrame = animFireballCast.getKeyFrame(stateTime, false);
                 } else if (activeCastType == SpellType.HOWLING_WRAITHS) {
                     currentFrame = animScreamCast.getKeyFrame(stateTime, false);
-                }
-                else if (activeCastType == SpellType.HEAL) {
+                } else if (activeCastType == SpellType.HEAL) {
                     currentFrame = animFocus.getKeyFrame(stateTime , true);
                 } else {
                     currentFrame = animIdle.getKeyFrame(stateTime, true);
@@ -518,8 +540,10 @@ public class Player extends Entity{
                 currentFrame = animDash.getKeyFrame(stateTime, false);
                 break;
             case ATTACKING:
-                currentFrame = (attackDirection == 1) ? animSlashUp.getKeyFrame(stateTime, false) :
-                    (attackDirection == 2) ? animSlashDown.getKeyFrame(stateTime, false) :
+                currentFrame = (attackDirection == 1) ?
+                    animSlashUp.getKeyFrame(stateTime, false) :
+                    (attackDirection == 2) ?
+                        animSlashDown.getKeyFrame(stateTime, false) :
                         animSlashSide.getKeyFrame(stateTime, false);
                 break;
             case WALL_SLIDING:
@@ -546,8 +570,6 @@ public class Player extends Entity{
         if (currentFrame == null) return;
 
         boolean flipX = isFacingRight;
-
-        // Draw perfectly mapped to match your bounding boxes
         float spriteScale = 0.5f;
 
         float drawnWidth = currentFrame.getRegionWidth() * spriteScale;
@@ -557,21 +579,78 @@ public class Player extends Entity{
 
         batch.draw(
             currentFrame.getTexture(),
-            drawX, drawY,                                  // Screen Placement
-            drawnWidth / 2f, drawnHeight / 2f,             // Origin Point for rotation/scaling
-            drawnWidth, drawnHeight,                       // Width and Height dimensions on screen
-            1f, 1f,                                        // Scale dimensions factors
-            0f,                                            // Rotation degrees
-            currentFrame.getRegionX(), currentFrame.getRegionY(), // Coordinates inside texture pack sheet
-            currentFrame.getRegionWidth(), currentFrame.getRegionHeight(), // Dimensions inside texture pack sheet
-            flipX, false                                   // Flipping fields (Horizontally, Vertically)
+            drawX, drawY,
+            drawnWidth / 2f, drawnHeight / 2f,
+            drawnWidth, drawnHeight,
+            1f, 1f,
+            0f,
+            currentFrame.getRegionX(), currentFrame.getRegionY(),
+            currentFrame.getRegionWidth(), currentFrame.getRegionHeight(),
+            flipX, false
         );
         batch.setColor(Color.WHITE);
+
+        // --- RENDER OVERLAY SLASH EFFECT LOOP ---
+        if (renderSlashEffect) {
+            TextureRegion effectFrame = (slashEffectDirection == 2) ?
+                effectSlashDown.getKeyFrame(slashEffectTime, false) :
+                effectSlashSide.getKeyFrame(slashEffectTime, false);
+            if (effectFrame != null) {
+                float fxScale = 0.65f;
+                float fxWidth = effectFrame.getRegionWidth() * fxScale;
+                float fxHeight = effectFrame.getRegionHeight() * fxScale;
+
+                float fxX = slashEffectSpawnPos.x;
+                float fxY = slashEffectSpawnPos.y;
+                float rotation = 0f;
+
+                boolean fxFlipX = slashEffectFacingRight;
+                boolean fxFlipY = false;
+
+                if (slashEffectDirection == 0) {
+                    // Horizontal Side Slash Offset
+                    if (slashEffectFacingRight) {
+                        fxX += hitbox.width - 25f;
+                    } else {
+                        fxX -= fxWidth - 25f;
+                    }
+                    fxY += (hitbox.height / 2f) - (fxHeight / 2f) - 5f;
+                }
+                else if (slashEffectDirection == 1) {
+                    // FIXED: Upward Slash now faces forward relative to player direction
+                    fxX += (hitbox.width / 2f) - (fxWidth / 2f);
+                    fxY += hitbox.height - 15f;
+                    fxFlipX = slashEffectFacingRight;
+                    rotation = slashEffectFacingRight ? -90f : 90f;
+                    fxFlipY = true;
+                }
+                else if (slashEffectDirection == 2) {
+                    // Downward Slash
+                    fxX += (hitbox.width / 2f) - (fxWidth / 2f);
+                    fxY -= fxHeight - 20f;
+                    if (!slashEffectFacingRight) {
+                        fxFlipX = true;
+                    }
+                }
+
+                batch.draw(
+                    effectFrame.getTexture(),
+                    fxX, fxY,
+                    fxWidth / 2f, fxHeight / 2f,
+                    fxWidth, fxHeight,
+                    1f, 1f,
+                    rotation,
+                    effectFrame.getRegionX(), effectFrame.getRegionY(),
+                    effectFrame.getRegionWidth(), effectFrame.getRegionHeight(),
+                    fxFlipX, fxFlipY
+                );
+            }
+        }
+        // ----------------------------------------
     }
 
     public void takeDamage(int amount, boolean knockLeft) {
         if (cheatGodMode || invulnerabilityTimer > 0 || health <= 0) return;
-
         this.health -= amount;
         loseMask(1);
 
@@ -586,7 +665,6 @@ public class Player extends Entity{
             this.stateTime = 0f;
             this.velocity.y = 220f;
             this.velocity.x = knockLeft ? -300f : 300f;
-
             if (soundHurt != null) {
                 soundHurt.setVolume(0.6f);
                 soundHurt.play();
@@ -596,11 +674,9 @@ public class Player extends Entity{
 
     public Rectangle getAttackHitbox() {
         if (!isAttacking || hasHitThisAttack) return null;
-
         Rectangle attackBox = new Rectangle();
         float nailReach = 64f;
         float nailThickness = 48f;
-
         if (attackDirection == 0) {
             attackBox.width = nailReach;
             attackBox.height = nailThickness;
@@ -640,6 +716,8 @@ public class Player extends Entity{
 
     public void dispose() {
         if (placeholderTexture != null) placeholderTexture.dispose();
+        if (texSlashSide != null) texSlashSide.dispose();
+        if (texSlashDown != null) texSlashDown.dispose();
         atlas.dispose();
         if (soundJump != null) soundJump.dispose();
         if (soundDoubleJump != null) soundDoubleJump.dispose();
@@ -684,8 +762,6 @@ public class Player extends Entity{
 
     public void loseMask(int damage) {
         currentMasks = Math.max(0, currentMasks - damage);
-        if (currentMasks <= 0) {
-        }
     }
 
     public void tryHeal() {
@@ -700,9 +776,7 @@ public class Player extends Entity{
 
     public int getMaxMasks() { return maxMasks; }
 
-    public int getAttackDamage() {
-        return this.ATTACK_DAMAGE;
-    }
+    public int getAttackDamage() { return this.ATTACK_DAMAGE; }
 
     public float getSoulPercentage() { return currentSoul / maxSoul; }
 
@@ -712,17 +786,11 @@ public class Player extends Entity{
         return type;
     }
 
-    public TextureAtlas getAtlas() {
-        return this.atlas;
-    }
+    public TextureAtlas getAtlas() { return this.atlas; }
 
-    public boolean isFacingRight() {
-        return this.isFacingRight;
-    }
+    public boolean isFacingRight() { return this.isFacingRight; }
 
-    public boolean isCharmEquipped(CharmType type) {
-        return equippedCharms.contains(type);
-    }
+    public boolean isCharmEquipped(CharmType type) { return equippedCharms.contains(type); }
 
     public boolean toggleCharmState(CharmType type) {
         if (equippedCharms.contains(type)) {
@@ -743,27 +811,23 @@ public class Player extends Entity{
         this.ATTACK_COOLDOWN = 0.75f;
         this.HEAL_FOCUS_DURATION = 1.50f;
         this.ATTACK_DAMAGE = 1;
+
         if (equippedCharms.contains(CharmType.QUICK_SLASH)) {
             this.ATTACK_DURATION = 0.14f;
             this.ATTACK_COOLDOWN = 0.5f;
         }
-
         if (equippedCharms.contains(CharmType.DASHMASTER)) {
             this.DASH_COOLDOWN = 0.35f;
         }
-
         if (equippedCharms.contains(CharmType.SOUL_CATCHER)) {
             this.SOUL_PER_HIT = 17f;
         }
-
         if (equippedCharms.contains(CharmType.QUICK_FOCUS)) {
             this.HEAL_FOCUS_DURATION = 0.95f;
         }
-
         if(equippedCharms.contains(CharmType.UNBREAKABLE_STRENGTH)) {
             this.ATTACK_DAMAGE = 2;
         }
-
     }
 
     public float getCurrentSoul() { return this.currentSoul; }
@@ -773,9 +837,7 @@ public class Player extends Entity{
         this.health = masks;
     }
 
-    public void setCurrentSoul(float soul) {
-        this.currentSoul = soul;
-    }
+    public void setCurrentSoul(float soul) { this.currentSoul = soul; }
 
     public void activateZeroGravity(float durationInSeconds) {
         this.zeroGravityTimer = durationInSeconds;
@@ -794,5 +856,4 @@ public class Player extends Entity{
     }
 
     public boolean isCheatNoclipActive() { return this.cheatNoclip; }
-
 }

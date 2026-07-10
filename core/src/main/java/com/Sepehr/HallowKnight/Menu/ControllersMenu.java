@@ -110,6 +110,7 @@ public class ControllersMenu extends BaseMenu{
         resetBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 prefs.remove("key_left");
                 prefs.remove("key_right");
                 prefs.remove("key_jump");
@@ -130,6 +131,7 @@ public class ControllersMenu extends BaseMenu{
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 engine.setScreen(previousScreen);
             }
         });
@@ -141,6 +143,7 @@ public class ControllersMenu extends BaseMenu{
     }
 
     private void startListening(String actionPreferenceName, TextButton associatedButton) {
+        playButtonSound();
         isListeningForInput = true;
         actionToRemap = actionPreferenceName;
         activeRemapButton = associatedButton;

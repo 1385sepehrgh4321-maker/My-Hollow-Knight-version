@@ -81,6 +81,7 @@ public class GuideMenu extends BaseMenu{
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 engine.setScreen(previousMenu);
             }
         });

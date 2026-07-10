@@ -52,6 +52,7 @@ public class AchievementMenu extends BaseMenu{
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 engine.setScreen(new MainMenu(engine));
             }
         });

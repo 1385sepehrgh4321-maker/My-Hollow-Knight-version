@@ -63,6 +63,7 @@ public class MainMenu extends BaseMenu{
         startGameBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 mainMenuTable.setTouchable(Touchable.disabled);
                 mainMenuTable.addAction(Actions.sequence(Actions.alpha(0.3f , 0.3f)));
 
@@ -77,6 +78,7 @@ public class MainMenu extends BaseMenu{
         settingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 engine.setScreen(new SettingMenu(engine ,  new MainMenu(engine)));
             }
         });
@@ -85,6 +87,7 @@ public class MainMenu extends BaseMenu{
         guideBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 engine.setScreen(new GuideMenu(engine , MainMenu.this));
             }
         });
@@ -93,6 +96,7 @@ public class MainMenu extends BaseMenu{
         achievementBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 engine.setScreen(new AchievementMenu(engine));
             }
         });
@@ -127,6 +131,7 @@ public class MainMenu extends BaseMenu{
             loadSlot.addListener(new ChangeListener() {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
+                    playButtonSound();
                     engine.setActiveSlot(slotIndex);
                     engine.setScreen(new GameplayScreen(engine));
                 }
@@ -138,6 +143,7 @@ public class MainMenu extends BaseMenu{
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playButtonSound();
                 mainMenuTable.addAction(Actions.alpha(1.0f, 0.3f));
                 mainMenuTable.setTouchable(Touchable.enabled);
                 mainMenuTable.invalidateHierarchy();

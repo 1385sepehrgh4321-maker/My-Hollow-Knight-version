@@ -7,6 +7,8 @@ import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.I18NBundle;
+import games.rednblack.miniaudio.MASound;
+import games.rednblack.miniaudio.MiniAudio;
 
 import java.util.Locale;
 
@@ -15,9 +17,14 @@ public class HollowKnightEngine extends Game {
     private SpriteBatch batch;
     private I18NBundle bundle;
     private int activeSlot = 1;
+    private MiniAudio miniAudio;
+    private MASound buttonClickSfx;
 
     @Override
     public void create() {
+        miniAudio = new MiniAudio();
+        buttonClickSfx = miniAudio.createSound("audio/button.wav");
+
         menuMusic = Gdx.audio.newMusic(Gdx.files.internal("sprites/Hollow Knight/Audio/stille.mp3"));
         menuMusic.setLooping(true);
         Preferences prefs = Gdx.app.getPreferences("HollowKnightSettings");
@@ -30,6 +37,14 @@ public class HollowKnightEngine extends Game {
 
         batch = new SpriteBatch();
         this.setScreen(new MainMenu(this));
+    }
+
+    public void playGlobalButtonSound() {
+        if (buttonClickSfx != null) {
+            buttonClickSfx.stop();
+            buttonClickSfx.setVolume(0.5f);
+            buttonClickSfx.play();
+        }
     }
 
     public void loadLocalization() {
@@ -67,6 +82,10 @@ public class HollowKnightEngine extends Game {
             batch.dispose();
         if(menuMusic != null)
             menuMusic.dispose();
+        if (buttonClickSfx != null)
+            buttonClickSfx.dispose();
+        if (miniAudio != null)
+            miniAudio.dispose();
     }
 
     public SpriteBatch getBatch() {
@@ -79,5 +98,9 @@ public class HollowKnightEngine extends Game {
 
     public void setActiveSlot(int activeSlot) {
         this.activeSlot = activeSlot;
+    }
+
+    public MiniAudio getMiniAudio() {
+        return this.miniAudio;
     }
 }

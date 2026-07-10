@@ -35,6 +35,8 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
 
     private GameHUD hud;
 
+    private com.badlogic.gdx.maps.tiled.TiledMap currentCachedMap;
+
     public GameplayScreen(HollowKnightEngine engine) {
         this.engine = engine;
     }
@@ -52,7 +54,7 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
                 mapPath = saveData.currentMapPath;
             }
 
-            world = new GameWorld(mapPath, saveData);
+            world = new GameWorld(engine.getMiniAudio() , mapPath, saveData);
             hud = new GameHUD();
 
             if (world.getPlayer() != null) {
@@ -145,20 +147,38 @@ public class GameplayScreen implements Screen , PauseMenu.PauseListener {
         }
 
         if (world.getPlayer() != null) {
+            com.badlogic.gdx.maps.tiled.TiledMap activeMap = world.getMap();
+            if (activeMap != currentCachedMap) {
+                currentCachedMap = activeMap;
+
+                com.badlogic.gdx.maps.MapProperties prop = activeMap.getProperties();
+                int mapWidthInTiles = prop.get("width", Integer.class);
+                int mapHeightInTiles = prop.get("height", Integer.class);
+                int tileWidth = prop.get("tilewidth", Integer.class);
+                int tileHeight = prop.get("tileheight", Integer.class);
+
+                this.mapWidthPixels = mapWidthInTiles * tileWidth;
+                this.mapHeightPixels = mapHeightInTiles * tileHeight;
+            }
+
             float targetX = world.getPlayer().getPosition().x;
             float targetY = world.getPlayer().getPosition().y;
 
             float minX = viewport.getWorldWidth() / 2f;
-            float maxX = mapWidthPixels - (viewport.getWorldWidth() / 2f);
+            float maxX = this.mapWidthPixels - minX;
 
             float minY = viewport.getWorldHeight() / 2f;
-            float maxY = mapHeightPixels - (viewport.getWorldHeight() / 2f);
+            float maxY = this.mapHeightPixels - minY;
 
-            float clampedX = com.badlogic.gdx.math.MathUtils.clamp(targetX, minX, maxX);
-            float clampedY = com.badlogic.gdx.math.MathUtils.clamp(targetY, minY, maxY);
+            float clampedX = (this.mapWidthPixels <= viewport.getWorldWidth())
+                ? this.mapWidthPixels / 2f
+                : com.badlogic.gdx.math.MathUtils.clamp(targetX, minX, maxX);
+
+            float clampedY = (this.mapHeightPixels <= viewport.getWorldHeight())
+                ? this.mapHeightPixels / 2f
+                : com.badlogic.gdx.math.MathUtils.clamp(targetY, minY, maxY);
 
             camera.position.set(clampedX, clampedY, 0);
-
         }
         camera.update();
 
